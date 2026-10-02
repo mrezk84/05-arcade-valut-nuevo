@@ -33,8 +33,8 @@ Los overlays, el leaderboard local y el panel lateral del original se sustituyen
 - Play-page `app/games/tetris/play/page.tsx` sobre `GamePlayShell`, con una línea de controles bajo el CRT.
 - Fila `tetris` en la tabla `games`, reutilizando `cover-tetro`.
 - Paso final de limpieza: separar en `components/games/tetris/` (constantes, tablero, dibujo) y eliminar código muerto, sin cambiar el comportamiento.
-- Se conservan las 8 piezas del código original, incluida la pieza `N` (tuerca).
-- Skins `retro`, `neon`, `pastel` y `pixel` con selector bajo el CRT y preferencia guardada en `localStorage` (`tetris-skin`).
+- Se usan 7 piezas (I, O, T, S, Z, J, L). Se descarta la pieza `N` (tuerca) del código original.
+- Skins `retro`, `neon`, `pastel` y `pixel` con un selector desplegable en el HUD y preferencia guardada en `localStorage` (`tetris-skin`).
 
 **Fuera de alcance (para specs futuros):**
 
@@ -110,6 +110,7 @@ interface GamePlayShellProps {
   score: number;
   onForceEnd: () => void;
   onRestart: () => void;
+  hudExtra?: React.ReactNode;
   children: React.ReactNode;
 }
 ```
@@ -146,7 +147,7 @@ export interface Piece {
 }
 ```
 
-- `COLORS` y `PIECES` se copian de `game.js` (8 tipos, índice `1..8`, `0` = vacío).
+- `COLORS` y `PIECES` se copian de `game.js` (7 tipos, índice `1..7`, `0` = vacío; sin la pieza `N`).
 - `BOARD_BG` y `GRID_LINE` son los valores del tema oscuro del original y los usa la skin `retro`. Sustituyen a `getComputedStyle(...)` y a la variable CSS `--grid-line`, que no existen en la plataforma. Cada skin define su propio `boardBg` y `gridLine`.
 - Puntuación y velocidad no cambian:
   - Líneas: `LINE_SCORES[n] × level`.
@@ -188,7 +189,7 @@ Antes de escribir código de rutas o páginas hay que leer la guía correspondie
 
 8. **Limpieza sin cambio de comportamiento.** Separar el código portado en `components/games/tetris/constants.ts`, `board.ts` y `draw.ts`, con funciones que reciben el tablero y el contexto como argumentos, y dejar en `TetrisGame.tsx` solo el loop, el teclado y los callbacks. Eliminar el código muerto: `maxCombo`, `currentCombo`, `lastClearWasCombo` y `startLevel`.
    Verificación: se repiten los criterios de aceptación de juego y HUD con el mismo resultado, y `npm run build` completa sin errores.
-9. **Skins.** Crear `components/games/tetris/skins.ts` con `SkinId` (`retro | neon | pastel | pixel`), la interfaz `Skin` (`name`, `colors`, `boardBg`, `gridLine`, `drawBlock`) y las cuatro skins portadas del original; `retro` usa `COLORS`, `BOARD_BG` y `GRID_LINE`. Crear `components/games/tetris/useSkin.ts` (`useSyncExternalStore`) que lee y escribe `tetris-skin` en `localStorage`, con `retro` como valor por defecto si falta o es inválido. `draw`, `drawGrid` y `drawNext` reciben la skin; `TetrisGame` recibe la prop `skin` y redibuja el canvas "Siguiente" al cambiarla. La play-page añade, bajo el CRT y junto a la línea de controles, un selector `radiogroup` (Retro / Neon / Pastel / Pixel Art).
+9. **Skins.** Crear `components/games/tetris/skins.ts` con `SkinId` (`retro | neon | pastel | pixel`), la interfaz `Skin` (`name`, `colors`, `boardBg`, `gridLine`, `drawBlock`) y las cuatro skins portadas del original; `retro` usa `COLORS`, `BOARD_BG` y `GRID_LINE`. Crear `components/games/tetris/useSkin.ts` (`useSyncExternalStore`) que lee y escribe `tetris-skin` en `localStorage`, con `retro` como valor por defecto si falta o es inválido. `draw`, `drawGrid` y `drawNext` reciben la skin; `TetrisGame` recibe la prop `skin` y redibuja el canvas "Siguiente" al cambiarla. La play-page añade al HUD, junto a las métricas y mediante la prop opcional `hudExtra` del shell, una lista desplegable (`<select>`) con Retro / Neon / Pastel / Pixel Art, que se desenfoca tras elegir.
    Verificación: el cambio de skin se ve al instante, también en plena partida, persiste al recargar y no afecta a puntuación, HUD ni teclado.
 
 ---
@@ -200,7 +201,7 @@ Antes de escribir código de rutas o páginas hay que leer la guía correspondie
 - [ ] El centro horizontal del canvas principal coincide con el centro de la pantalla CRT (diferencia de 2 px o menos).
 - [ ] El canvas "siguiente" está a la derecha del canvas principal, no centrado con él, y se ve completo dentro de la pantalla.
 - [ ] El panel "siguiente" no desplaza al canvas principal: el tablero sigue centrado con o sin panel.
-- [ ] El tablero es de 10×20 y aparecen las 8 piezas, incluida la `N`.
+- [ ] El tablero es de 10×20 y solo aparecen las 7 piezas I, O, T, S, Z, J y L (no hay pieza `N`).
 - [ ] `←`/`→` mueven la pieza, `↑` y `X` la rotan, `↓` hace soft drop y `Espacio` hace hard drop.
 - [ ] Pulsar las flechas o `Espacio` no hace scroll de la página.
 - [ ] Pulsar `P` o `Esc` no pausa el juego.
@@ -225,12 +226,12 @@ Antes de escribir código de rutas o páginas hay que leer la guía correspondie
 - [ ] Salir de la página no deja listeners ni loops activos.
 - [ ] Tras el paso de limpieza, el juego y el HUD se comportan igual que antes y no queda código de combo ni de `startLevel`.
 - [ ] `/games/asteroids/play` mantiene HUD, pausa, modal y guardado, y queda congelado con el modal abierto.
-- [ ] Bajo el CRT hay un selector con Retro, Neon, Pastel y Pixel Art, y la skin activa se distingue de las demás.
+- [ ] En el HUD, junto a las métricas, hay una lista desplegable con Retro, Neon, Pastel y Pixel Art, y muestra la skin activa.
 - [ ] Al cambiar de skin, el tablero, la pieza fantasma y el canvas "siguiente" se redibujan al instante, también con la partida en curso.
 - [ ] La skin elegida se mantiene al recargar la página (`localStorage`, clave `tetris-skin`).
 - [ ] Sin valor guardado, o con uno inválido, se usa Retro.
 - [ ] Cada skin usa su propio fondo y su propia rejilla, y Pastel se lee bien con su fondo claro.
-- [ ] Tras pulsar un botón del selector, `Espacio` hace hard drop y no vuelve a activar el botón.
+- [ ] Tras elegir una skin en la lista, `Espacio` y las flechas controlan el juego y no la lista.
 - [ ] Cambiar de skin no altera puntuación, líneas, nivel, vidas ni la pausa.
 - [ ] `npm run build` completa sin errores de TypeScript.
 
@@ -249,7 +250,7 @@ Antes de escribir código de rutas o páginas hay que leer la guía correspondie
 - **Sí: el shell congela el juego con el modal abierto (`paused || over`).** Razón: en Tetris el teclado seguiría moviendo piezas detrás del modal. Se corrige en el shell para que valga también para Asteroids.
 - **Sí: acotar el score a 10 000 000 en el shell.** Razón: la base lo rechaza por CHECK, y hacerlo una vez cubre a todos los juegos.
 - **Sí: el shell no marca "guardado" si el insert falla.** Razón: la play-page de Asteroids lo marca antes de insertar y pierde el score en silencio si hay error.
-- **Sí: mantener la pieza `N`.** Razón: es el comportamiento jugable real del código. El README del origen dice 7 piezas, pero `randomPiece()` genera 8.
+- **Sí: descartar la pieza `N`.** Razón: el usuario no la quiere. El README del origen ya hablaba de 7 piezas, aunque `randomPiece()` generaba 8.
 - **Sí: `BOARD_BG` y `GRID_LINE` como constantes.** Razón: el original leía `--grid-line` del `body`, y esa variable y el tema claro/oscuro no existen en la plataforma.
 - **Sí: canvas "siguiente" dentro del componente.** Razón: es estado interno del juego, y subirlo al shell exigiría un slot genérico sin segundo caso de uso.
 - **Sí: controles como una línea de texto en la play-page de Tetris.** Razón: no amplía el contrato del shell.
@@ -257,7 +258,7 @@ Antes de escribir código de rutas o páginas hay que leer la guía correspondie
 - **Sí: `dt` acotado a 100 ms y `lastTime` actualizado en cada frame.** Razón: el original no limitaba `dt`, y al reanudar o volver de otra pestaña soltaría varias caídas de golpe.
 - **Sí: fila de `games` antes de la limpieza.** Razón: el juego ya es jugable en el paso 6, y la limpieza del paso 8 se verifica contra el juego publicado.
 - **No: nivel inicial, combo y tema claro/oscuro.** Razón: son features del origen, no de la plataforma. Cada uno merece su spec si se quiere recuperar.
-- **Sí: skins con selector bajo el CRT.** Razón: el usuario quiere cambiar el aspecto del juego como en el original. El selector va en la play-page y no amplía el contrato del shell.
+- **Sí: skins con una lista desplegable en el HUD.** Razón: el usuario quiere cambiar el aspecto del juego como en el original y tener el control junto a las métricas. Se añade al shell la prop opcional `hudExtra`, sin afectar a Asteroids.
 - **Sí: el cambio de skin se aplica en cualquier momento.** Razón: solo cambia el dibujo, no el estado del juego, así que no hace falta pausar.
 - **Sí: clave `tetris-skin` en `localStorage`.** Razón: es la misma que usaba el original. Si falta o es inválida, se usa `retro`.
 - **Sí: cada skin define su fondo y su rejilla.** Razón: Pastel tiene fondo claro y una rejilla oscura fija se vería mal.

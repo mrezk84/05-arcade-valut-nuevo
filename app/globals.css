@@ -1182,14 +1182,19 @@ a {
   font-size: 12px;
   color: var(--ink-dim);
 }
-.tetris-skins {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.tetris-skin-select {
+  font-family: var(--pixel);
+  font-size: 10px;
+  color: var(--cyan);
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  cursor: pointer;
 }
-.tetris-skins .btn {
-  padding: 6px 10px;
-  font-size: 8px;
+.tetris-skin-select:hover,
+.tetris-skin-select:focus-visible {
+  border-color: var(--cyan);
+  outline: none;
 }
 
 /* fake in-screen game */

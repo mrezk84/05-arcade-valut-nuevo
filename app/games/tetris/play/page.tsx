@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useState, useCallback } from 'react';
 import GamePlayShell from '@/components/games/GamePlayShell';
-import { SKINS, SKIN_IDS } from '@/components/games/tetris/skins';
+import { SKINS, SKIN_IDS, type SkinId } from '@/components/games/tetris/skins';
 import { useSkin } from '@/components/games/tetris/useSkin';
 
 const TetrisGame = dynamic(() => import('@/components/games/TetrisGame'), {
@@ -71,31 +71,25 @@ export default function TetrisPlay() {
         onRestart={restart}
         hudExtra={
           <div className="hud-stat">
-            <div className="l" id="tetris-skin-label">
+            <label className="l" htmlFor="tetris-skin">
               Skin
-            </div>
-            <div
-              className="tetris-skins"
-              role="radiogroup"
-              aria-labelledby="tetris-skin-label"
+            </label>
+            <select
+              id="tetris-skin"
+              className="tetris-skin-select"
+              value={skin}
+              onChange={(e) => {
+                setSkin(e.target.value as SkinId);
+                // Keep Space and the arrow keys for the game, not for the select
+                e.target.blur();
+              }}
             >
               {SKIN_IDS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  role="radio"
-                  aria-checked={skin === id}
-                  className={`btn ${skin === id ? 'yellow' : 'ghost'}`}
-                  onClick={(e) => {
-                    setSkin(id);
-                    // Keep Space / Enter for the game, not for this button
-                    e.currentTarget.blur();
-                  }}
-                >
+                <option key={id} value={id}>
                   {SKINS[id].name}
-                </button>
+                </option>
               ))}
-            </div>
+            </select>
           </div>
         }
       >

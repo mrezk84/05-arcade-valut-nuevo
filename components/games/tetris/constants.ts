@@ -16,7 +16,6 @@ export const COLORS: (string | null)[] = [
   '#e57373', // Z - red
   '#90caf9', // J - pale blue
   '#ffb74d', // L - orange
-  '#9e9e9e', // N - tuerca (gris metálico)
 ];
 
 export const PIECES: (Shape | null)[] = [
@@ -56,9 +55,4 @@ export const PIECES: (Shape | null)[] = [
     [7, 7, 7],
     [0, 0, 0],
   ], // L
-  [
-    [8, 8, 8],
-    [8, 0, 8],
-    [8, 8, 8],
-  ], // N (tuerca)
 ];
