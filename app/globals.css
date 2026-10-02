@@ -1184,13 +1184,12 @@ a {
 }
 .tetris-skins {
   display: flex;
-  justify-content: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 .tetris-skins .btn {
-  padding: 8px 14px;
-  font-size: 9px;
+  padding: 6px 10px;
+  font-size: 8px;
 }
 
 /* fake in-screen game */

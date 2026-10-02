@@ -17,6 +17,7 @@ interface GamePlayShellProps {
   score: number;
   onForceEnd: () => void;
   onRestart: () => void;
+  hudExtra?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -30,6 +31,7 @@ export default function GamePlayShell({
   score,
   onForceEnd,
   onRestart,
+  hudExtra,
   children,
 }: GamePlayShellProps) {
   const { user } = useUser();
@@ -85,6 +87,7 @@ export default function GamePlayShell({
               <div className="v">{s.value}</div>
             </div>
           ))}
+          {hudExtra}
         </div>
         <div className="hud-actions">
           <button className="btn yellow" onClick={onTogglePause}>

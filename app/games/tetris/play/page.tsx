@@ -69,6 +69,35 @@ export default function TetrisPlay() {
         score={score}
         onForceEnd={forceEnd}
         onRestart={restart}
+        hudExtra={
+          <div className="hud-stat">
+            <div className="l" id="tetris-skin-label">
+              Skin
+            </div>
+            <div
+              className="tetris-skins"
+              role="radiogroup"
+              aria-labelledby="tetris-skin-label"
+            >
+              {SKIN_IDS.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="radio"
+                  aria-checked={skin === id}
+                  className={`btn ${skin === id ? 'yellow' : 'ghost'}`}
+                  onClick={(e) => {
+                    setSkin(id);
+                    // Keep Space / Enter for the game, not for this button
+                    e.currentTarget.blur();
+                  }}
+                >
+                  {SKINS[id].name}
+                </button>
+              ))}
+            </div>
+          </div>
+        }
       >
         <TetrisGame
           key={gameKey}
@@ -88,24 +117,6 @@ export default function TetrisPlay() {
           <span>↓ bajar</span>
           <span>Espacio caída</span>
         </p>
-        <div className="tetris-skins" role="radiogroup" aria-label="Skin">
-          {SKIN_IDS.map((id) => (
-            <button
-              key={id}
-              type="button"
-              role="radio"
-              aria-checked={skin === id}
-              className={`btn ${skin === id ? 'yellow' : 'ghost'}`}
-              onClick={(e) => {
-                setSkin(id);
-                // Keep Space / Enter for the game, not for this button
-                e.currentTarget.blur();
-              }}
-            >
-              {SKINS[id].name}
-            </button>
-          ))}
-        </div>
       </div>
     </>
   );
