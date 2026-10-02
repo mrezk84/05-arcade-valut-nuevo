@@ -9,7 +9,7 @@ argument-hint: 'carpeta de referencia (ej. 04-arkanoid) o descripción del juego
 
 Produce un spec en `specs/NN-<id>-game.md` que describe cómo integrar un juego en Arcade Vault: componente canvas, play-page, fila en `games` y guardado de score en `scores`. **No escribes código aquí.** Solo el `.md` final.
 
-Sigue el método de `/spec` (`.agents/skills/spec/SKILL.md`): fases en orden, preguntas antes de redactar, sección por sección con confirmación. Usa `template.md` (misma carpeta que este skill) como forma del spec y `reference/integration.md` como contrato técnico que el spec debe citar.
+**La skill `/spec` es la fuente de verdad del método y del formato.** Antes de redactar o guardar cualquier spec debes leerla (Fase 1, paso 1 y Fase 5, paso 1). Este skill solo añade lo específico de juegos: `template.md` (esqueleto de spec de juego) y `reference/integration.md` (contrato técnico que el spec debe citar). Si algo de este skill contradice a `/spec`, manda `/spec`.
 
 Responde en el idioma del prompt inicial.
 
@@ -21,12 +21,13 @@ Responde en el idioma del prompt inicial.
 
 ## Fase 1 — Contexto (lee antes de preguntar)
 
-1. Lee `CLAUDE.md` y `AGENTS.md`.
-2. Lista `specs/`; lee los dos más recientes, más `05-asteroids-game.md` y `06-games-table-leaderboard-supabase.md`.
-3. **Schema real**: `mcp__supabase__list_tables` (verbose) y `select id, sort_order from games order by sort_order`. El spec 06 está desactualizado respecto a la base (usa `player_name`/`user_id`; la tabla real usa `name`, sin `user_id`, y `games` tiene `sort_order`). Manda el schema real. Si MCP no está disponible, lee `lib/supabase/types.ts` y avisa al usuario.
-4. Comprueba si existe `components/games/GamePlayShell.tsx`. Si no existe, el spec **debe incluir** su extracción como primer paso (ver `reference/integration.md`).
-5. Lee `components/games/AsteroidsGame.tsx` y `app/games/asteroids/play/page.tsx` (o el shell, si ya existe) para citar el patrón vigente, no el de memoria.
-6. Lista las clases `.cover-*` de `app/globals.css`.
+1. **Lee completos, con Read, `.agents/skills/spec/SKILL.md` y `.agents/skills/spec/template.md`.** No los resumas de memoria. De ahí salen: el método por fases, la estructura y orden de secciones, la cabecera, las reglas de redacción (una idea por frase, sin TODOs, sin código largo), los estados válidos y las reglas de guardado.
+2. Lee `CLAUDE.md` y `AGENTS.md`.
+3. Lista `specs/`; lee los dos más recientes, más `05-asteroids-game.md` y `06-games-table-leaderboard-supabase.md`.
+4. **Schema real**: `mcp__supabase__list_tables` (verbose) y `select id, sort_order from games order by sort_order`. El spec 06 está desactualizado respecto a la base (usa `player_name`/`user_id`; la tabla real usa `name`, sin `user_id`, y `games` tiene `sort_order`). Manda el schema real. Si MCP no está disponible, lee `lib/supabase/types.ts` y avisa al usuario.
+5. Comprueba si existe `components/games/GamePlayShell.tsx`. Si no existe, el spec **debe incluir** su extracción como primer paso (ver `reference/integration.md`).
+6. Lee `components/games/AsteroidsGame.tsx` y `app/games/asteroids/play/page.tsx` (o el shell, si ya existe) para citar el patrón vigente, no el de memoria.
+7. Lista las clases `.cover-*` de `app/globals.css`.
 
 ## Fase 2 — Analizar el origen
 
@@ -61,19 +62,23 @@ Si la respuesta abre otra feature (multijugador, táctil, modos de dificultad), 
 
 ## Fase 4 — Redactar sección por sección
 
-Orden estricto: cabecera → scope → data model → implementation plan → acceptance criteria → decisions → risks. Muestra cada sección, pregunta si se queda así y espera confirmación. Nunca generes el spec entero de una vez.
+Orden estricto, el de `/spec` (Fase 3) y `.agents/skills/spec/template.md`: cabecera → scope → data model → implementation plan → acceptance criteria → decisions → risks → "What is not in this spec". Muestra cada sección, pregunta si se queda así y espera confirmación. Nunca generes el spec entero de una vez.
 
-Parte de `template.md`: el esqueleto del plan y los criterios base ya están ahí; adáptalos al juego, quita pasos condicionales que no apliquen y añade los específicos (assets, módulos auxiliares, migración de schema).
+Respeta las reglas de `/spec`: objetivo en una sola frase, "Fuera de alcance" explícito, pasos del plan commiteables y que dejan la app ejecutable, criterios booleanos verificables, decisiones con motivo.
+
+Parte de `template.md` de este skill (que especializa el de `/spec`): el esqueleto del plan y los criterios base ya están ahí; adáptalos al juego, quita pasos condicionales que no apliquen y añade los específicos (assets, módulos auxiliares, migración de schema).
 
 ## Fase 5 — Guardar
 
-1. Siguiente número libre en `specs/`; slug `<id>-game`.
-2. Confirma el nombre de archivo con el usuario antes de escribir.
-3. Escribe `specs/NN-<id>-game.md` con estado `Borrador` (o el set de estados que use el repo; mira los specs previos). Nunca `Aprobado` automático.
-4. Informa: ruta, estado, y sugiere `/spec-impl NN`.
+1. **Antes de crear el archivo, relee `.agents/skills/spec/SKILL.md` (Fase 4 y Hard rules) y `.agents/skills/spec/template.md`** y verifica el spec contra ellos: cabecera con el formato de `/spec`, todas las secciones obligatorias en orden, objetivo de una frase, "Fuera de alcance" presente, criterios booleanos, sin TODOs ni código largo. Corrige lo que no cumpla y avisa al usuario de los ajustes.
+2. Siguiente número libre en `specs/`; slug `<id>-game`.
+3. Confirma el nombre de archivo con el usuario antes de escribir.
+4. Escribe `specs/NN-<id>-game.md` con estado `Borrador` (o el set de estados que use el repo; mira los specs previos). Nunca `Aprobado` automático.
+5. Informa: ruta, estado, y sugiere `/spec-impl NN`.
 
 ## Reglas duras
 
+- **No redactes ni guardes ningún spec sin haber leído `/spec` (SKILL.md y template.md) en esta sesión.**
 - **No escribas código** ni toques archivos fuera de `specs/NN-*.md`.
 - **No inventes columnas.** Todo lo de base de datos sale del schema leído en Fase 1.
 - No planifiques cambios en `/games`, `/games/[id]` ni `/hall-of-fame`: ya leen de Supabase y el juego aparece al insertar la fila en `games`. Solo si el análisis demuestra lo contrario.
