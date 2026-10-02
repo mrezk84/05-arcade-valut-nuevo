@@ -34,6 +34,7 @@ Los overlays, el leaderboard local y el panel lateral del original se sustituyen
 - Fila `tetris` en la tabla `games`, reutilizando `cover-tetro`.
 - Paso final de limpieza: separar en `components/games/tetris/` (constantes, tablero, dibujo) y eliminar código muerto, sin cambiar el comportamiento.
 - Se conservan las 8 piezas del código original, incluida la pieza `N` (tuerca).
+- Skins `retro`, `neon`, `pastel` y `pixel` con selector bajo el CRT y preferencia guardada en `localStorage` (`tetris-skin`).
 
 **Fuera de alcance (para specs futuros):**
 
@@ -146,7 +147,7 @@ export interface Piece {
 ```
 
 - `COLORS` y `PIECES` se copian de `game.js` (8 tipos, índice `1..8`, `0` = vacío).
-- `BOARD_BG` y `GRID_LINE` son los valores del tema oscuro del original. Sustituyen a `getComputedStyle(...)` y a la variable CSS `--grid-line`, que no existen en la plataforma.
+- `BOARD_BG` y `GRID_LINE` son los valores del tema oscuro del original y los usa la skin `retro`. Sustituyen a `getComputedStyle(...)` y a la variable CSS `--grid-line`, que no existen en la plataforma. Cada skin define su propio `boardBg` y `gridLine`.
 - Puntuación y velocidad no cambian:
   - Líneas: `LINE_SCORES[n] × level`.
   - Hard drop: +2 por celda.
@@ -179,7 +180,7 @@ Antes de escribir código de rutas o páginas hay que leer la guía correspondie
 5. **Portar el loop y el teclado.** Copiar `loop` con las adaptaciones acordadas: sigue corriendo con `paused`, actualiza `lastTime` en cada frame, acota `dt` a 100 ms y no acumula caída mientras `paused`. Copiar el `keydown` en `window` con `preventDefault` en `ArrowLeft`, `ArrowRight`, `ArrowUp`, `ArrowDown` y `Space`, y sin las teclas `P`/`Esc`. Cleanup completo en el `return` del efecto.
    Verificación: las piezas caen, se mueven, rotan y se fijan, y PAUSA congela el juego.
 
-6. **Capturar el HUD y el game over.** Reescribir `updateHUD()` para emitir `score`, `lines`, `level` y `lives` por los callbacks, según la tabla de "Captura del HUD". Añadir `lives`, que `init()` pone a 1 y `endGame()` pone a 0, y hacer que `endGame()` emita y llame a `onGameOver(score)`. En la play-page, conectar los callbacks y hacer que FIN ponga `lives` a 0. Quitar de la copia los restos del DOM original (`getElementById`, overlays, leaderboard, skins, tema, pausa propia, selector de nivel).
+6. **Capturar el HUD y el game over.** Reescribir `updateHUD()` para emitir `score`, `lines`, `level` y `lives` por los callbacks, según la tabla de "Captura del HUD". Añadir `lives`, que `init()` pone a 1 y `endGame()` pone a 0, y hacer que `endGame()` emita y llame a `onGameOver(score)`. En la play-page, conectar los callbacks y hacer que FIN ponga `lives` a 0. Quitar de la copia los restos del DOM original (`getElementById`, overlays, leaderboard, tema, pausa propia, selector de nivel).
    Verificación: el HUD refleja puntuación, líneas, nivel y vidas en tiempo real, y al perder aparece el modal de game over con `lives` en `—`.
 
 7. **Insertar la fila en `games`.** Aplicar la migración con `apply_migration` usando el `insert` del data model. Va tras la play-page para que el juego no aparezca en `/games` antes de ser jugable.
@@ -187,8 +188,10 @@ Antes de escribir código de rutas o páginas hay que leer la guía correspondie
 
 8. **Limpieza sin cambio de comportamiento.** Separar el código portado en `components/games/tetris/constants.ts`, `board.ts` y `draw.ts`, con funciones que reciben el tablero y el contexto como argumentos, y dejar en `TetrisGame.tsx` solo el loop, el teclado y los callbacks. Eliminar el código muerto: `maxCombo`, `currentCombo`, `lastClearWasCombo` y `startLevel`.
    Verificación: se repiten los criterios de aceptación de juego y HUD con el mismo resultado, y `npm run build` completa sin errores.
-9. **Skins del juego original.**
-Skins (retro, neon, pastel, pixel). El selector Retro / Neon / Pastel / Pixel Art se implementa. Razón: se añade para que el usuario pueda cambiar el aspecto del juego y se graba la preferencia en el localStorage
+9. **Skins.** Crear `components/games/tetris/skins.ts` con `SkinId` (`retro | neon | pastel | pixel`), la interfaz `Skin` (`name`, `colors`, `boardBg`, `gridLine`, `drawBlock`) y las cuatro skins portadas del original; `retro` usa `COLORS`, `BOARD_BG` y `GRID_LINE`. Crear `components/games/tetris/useSkin.ts` (`useSyncExternalStore`) que lee y escribe `tetris-skin` en `localStorage`, con `retro` como valor por defecto si falta o es inválido. `draw`, `drawGrid` y `drawNext` reciben la skin; `TetrisGame` recibe la prop `skin` y redibuja el canvas "Siguiente" al cambiarla. La play-page añade, bajo el CRT y junto a la línea de controles, un selector `radiogroup` (Retro / Neon / Pastel / Pixel Art).
+   Verificación: el cambio de skin se ve al instante, también en plena partida, persiste al recargar y no afecta a puntuación, HUD ni teclado.
+
+---
 
 ## Acceptance criteria
 
@@ -222,6 +225,13 @@ Skins (retro, neon, pastel, pixel). El selector Retro / Neon / Pastel / Pixel Ar
 - [ ] Salir de la página no deja listeners ni loops activos.
 - [ ] Tras el paso de limpieza, el juego y el HUD se comportan igual que antes y no queda código de combo ni de `startLevel`.
 - [ ] `/games/asteroids/play` mantiene HUD, pausa, modal y guardado, y queda congelado con el modal abierto.
+- [ ] Bajo el CRT hay un selector con Retro, Neon, Pastel y Pixel Art, y la skin activa se distingue de las demás.
+- [ ] Al cambiar de skin, el tablero, la pieza fantasma y el canvas "siguiente" se redibujan al instante, también con la partida en curso.
+- [ ] La skin elegida se mantiene al recargar la página (`localStorage`, clave `tetris-skin`).
+- [ ] Sin valor guardado, o con uno inválido, se usa Retro.
+- [ ] Cada skin usa su propio fondo y su propia rejilla, y Pastel se lee bien con su fondo claro.
+- [ ] Tras pulsar un botón del selector, `Espacio` hace hard drop y no vuelve a activar el botón.
+- [ ] Cambiar de skin no altera puntuación, líneas, nivel, vidas ni la pausa.
 - [ ] `npm run build` completa sin errores de TypeScript.
 
 ---
@@ -246,7 +256,11 @@ Skins (retro, neon, pastel, pixel). El selector Retro / Neon / Pastel / Pixel Ar
 - **Sí: reinicio por `key`.** Razón: es el patrón vigente en Asteroids y evita lógica de reinicio interna.
 - **Sí: `dt` acotado a 100 ms y `lastTime` actualizado en cada frame.** Razón: el original no limitaba `dt`, y al reanudar o volver de otra pestaña soltaría varias caídas de golpe.
 - **Sí: fila de `games` antes de la limpieza.** Razón: el juego ya es jugable en el paso 6, y la limpieza del paso 8 se verifica contra el juego publicado.
-- **No: skins, nivel inicial, combo y tema claro/oscuro.** Razón: son features del origen, no de la plataforma. Cada uno merece su spec si se quiere recuperar.
+- **No: nivel inicial, combo y tema claro/oscuro.** Razón: son features del origen, no de la plataforma. Cada uno merece su spec si se quiere recuperar.
+- **Sí: skins con selector bajo el CRT.** Razón: el usuario quiere cambiar el aspecto del juego como en el original. El selector va en la play-page y no amplía el contrato del shell.
+- **Sí: el cambio de skin se aplica en cualquier momento.** Razón: solo cambia el dibujo, no el estado del juego, así que no hace falta pausar.
+- **Sí: clave `tetris-skin` en `localStorage`.** Razón: es la misma que usaba el original. Si falta o es inválida, se usa `retro`.
+- **Sí: cada skin define su fondo y su rejilla.** Razón: Pastel tiene fondo claro y una rejilla oscura fija se vería mal.
 - **No: enrutar `P` como tecla de pausa.** Razón: obligaría a ampliar el contrato del shell con un callback nuevo.
 - **No: partir en dos specs.** Razón: son dos canvas, sin assets ni audio y una sola fuente de lógica. La infraestructura (shell) ya es el primer paso de este plan.
 - **Sin confirmación por sección.** Las secciones de Scope a Riesgos se redactaron en un solo paso por petición del usuario, que las revisa directamente en este archivo. Las decisiones de los bloques de preguntas 1 y 2 sí se confirmaron una a una. Esta versión incorpora la revisión posterior del usuario (layout, una vida, captura del HUD y orden portar-y-limpiar).
@@ -270,7 +284,7 @@ Skins (retro, neon, pastel, pixel). El selector Retro / Neon / Pastel / Pixel Ar
 
 ## What is **not** in this spec
 
-- Skins, selector de nivel inicial, combo y tema claro/oscuro del Tetris original.
+- Selector de nivel inicial, combo y tema claro/oscuro del Tetris original.
 - Menú de pausa propio y tecla `P`/`Esc`.
 - Tabla de records local del juego.
 - Más de una vida.
