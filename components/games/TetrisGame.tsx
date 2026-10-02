@@ -129,7 +129,12 @@ export default function TetrisGame({
     const nextCtx = nextCanvas.getContext('2d')!;
 
     let board!: number[][], current!: Piece, next!: Piece;
-    let score!: number, lines!: number, level!: number;
+    let score!: number, lines!: number, level!: number, lives!: number;
+    // Last values emitted to the platform HUD; a callback fires only on change
+    let hudScore: number | undefined,
+      hudLines: number | undefined,
+      hudLevel: number | undefined,
+      hudLives: number | undefined;
     let gameOver!: boolean;
     let lastTime: number,
       dropAccum: number,
@@ -262,8 +267,24 @@ export default function TetrisGame({
       drawNext();
     }
 
-    // Provisional: the body arrives in step 6
-    function updateHUD() {}
+    function updateHUD() {
+      if (score !== hudScore) {
+        hudScore = score;
+        cbScore.current(score);
+      }
+      if (lines !== hudLines) {
+        hudLines = lines;
+        cbLines.current(lines);
+      }
+      if (level !== hudLevel) {
+        hudLevel = level;
+        cbLevel.current(level);
+      }
+      if (lives !== hudLives) {
+        hudLives = lives;
+        cbLives.current(lives);
+      }
+    }
 
     function drawBlock(
       context: CanvasRenderingContext2D,
@@ -347,9 +368,13 @@ export default function TetrisGame({
           drawBlock(nextCtx, offX + c, offY + r, shape[r][c], NB);
     }
 
-    // Provisional: the body arrives in step 6
     function endGame() {
+      if (gameOver) return;
       gameOver = true;
+      cancelAnimationFrame(animId);
+      lives = 0;
+      updateHUD();
+      cbOver.current(score);
     }
 
     function loop(ts: number) {
@@ -386,6 +411,8 @@ export default function TetrisGame({
       currentCombo = 0;
       lastClearWasCombo = false;
       lastTime = performance.now();
+      lives = 1;
+      hudScore = hudLines = hudLevel = hudLives = undefined;
       next = randomPiece();
       spawn();
       updateHUD();
