@@ -37,7 +37,6 @@ Los overlays, el leaderboard local y el panel lateral del original se sustituyen
 
 **Fuera de alcance (para specs futuros):**
 
-- Skins (retro, neon, pastel, pixel). Se usa solo la skin `retro`.
 - Selector de nivel inicial. Toda partida empieza en nivel 1.
 - Menú de pausa propio, tema claro/oscuro y tabla de records local del juego original.
 - Contador de combo (`maxCombo`): solo servía al leaderboard local. No se refleja en el HUD.
@@ -188,8 +187,8 @@ Antes de escribir código de rutas o páginas hay que leer la guía correspondie
 
 8. **Limpieza sin cambio de comportamiento.** Separar el código portado en `components/games/tetris/constants.ts`, `board.ts` y `draw.ts`, con funciones que reciben el tablero y el contexto como argumentos, y dejar en `TetrisGame.tsx` solo el loop, el teclado y los callbacks. Eliminar el código muerto: `maxCombo`, `currentCombo`, `lastClearWasCombo` y `startLevel`.
    Verificación: se repiten los criterios de aceptación de juego y HUD con el mismo resultado, y `npm run build` completa sin errores.
-
----
+9. **Skins del juego original.**
+Skins (retro, neon, pastel, pixel). El selector Retro / Neon / Pastel / Pixel Art se implementa. Razón: se añade para que el usuario pueda cambiar el aspecto del juego y se graba la preferencia en el localStorage
 
 ## Acceptance criteria
 
