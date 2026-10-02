@@ -3,6 +3,8 @@
 import dynamic from 'next/dynamic';
 import { useState, useCallback } from 'react';
 import GamePlayShell from '@/components/games/GamePlayShell';
+import { SKINS, SKIN_IDS } from '@/components/games/tetris/skins';
+import { useSkin } from '@/components/games/tetris/useSkin';
 
 const TetrisGame = dynamic(() => import('@/components/games/TetrisGame'), {
   ssr: false,
@@ -16,6 +18,7 @@ export default function TetrisPlay() {
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [gameKey, setGameKey] = useState(0);
+  const [skin, setSkin] = useSkin();
 
   const handleScoreChange = useCallback((s: number) => setScore(s), []);
   const handleLinesChange = useCallback((l: number) => setLines(l), []);
@@ -70,6 +73,7 @@ export default function TetrisPlay() {
         <TetrisGame
           key={gameKey}
           paused={paused || over}
+          skin={skin}
           onScoreChange={handleScoreChange}
           onLinesChange={handleLinesChange}
           onLevelChange={handleLevelChange}
@@ -77,12 +81,32 @@ export default function TetrisPlay() {
           onGameOver={handleGameOver}
         />
       </GamePlayShell>
-      <p className="tetris-controls">
-        <span>← → mover</span>
-        <span>↑ / X rotar</span>
-        <span>↓ bajar</span>
-        <span>Espacio caída</span>
-      </p>
+      <div className="tetris-below">
+        <p className="tetris-controls">
+          <span>← → mover</span>
+          <span>↑ / X rotar</span>
+          <span>↓ bajar</span>
+          <span>Espacio caída</span>
+        </p>
+        <div className="tetris-skins" role="radiogroup" aria-label="Skin">
+          {SKIN_IDS.map((id) => (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={skin === id}
+              className={`btn ${skin === id ? 'yellow' : 'ghost'}`}
+              onClick={(e) => {
+                setSkin(id);
+                // Keep Space / Enter for the game, not for this button
+                e.currentTarget.blur();
+              }}
+            >
+              {SKINS[id].name}
+            </button>
+          ))}
+        </div>
+      </div>
     </>
   );
 }

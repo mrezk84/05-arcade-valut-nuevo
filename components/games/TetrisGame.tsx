@@ -14,9 +14,11 @@ import {
 } from './tetris/board';
 import { LINE_SCORES } from './tetris/constants';
 import { draw, drawNext } from './tetris/draw';
+import { SKINS, type SkinId } from './tetris/skins';
 
 interface TetrisGameProps {
   paused: boolean;
+  skin: SkinId;
   onScoreChange: (score: number) => void;
   onLinesChange: (lines: number) => void;
   onLevelChange: (level: number) => void;
@@ -26,6 +28,7 @@ interface TetrisGameProps {
 
 export default function TetrisGame({
   paused,
+  skin,
   onScoreChange,
   onLinesChange,
   onLevelChange,
@@ -37,6 +40,7 @@ export default function TetrisGame({
 
   // Refs so the game loop always reads the latest prop values without re-running the effect
   const pausedRef = useRef(paused);
+  const skinRef = useRef(skin);
   const cbScore = useRef(onScoreChange);
   const cbLines = useRef(onLinesChange);
   const cbLevel = useRef(onLevelChange);
@@ -46,6 +50,9 @@ export default function TetrisGame({
   useEffect(() => {
     pausedRef.current = paused;
   }, [paused]);
+  useEffect(() => {
+    skinRef.current = skin;
+  }, [skin]);
   useEffect(() => {
     cbScore.current = onScoreChange;
   }, [onScoreChange]);
@@ -78,6 +85,8 @@ export default function TetrisGame({
       dropAccum!: number,
       dropInterval!: number,
       animId!: number;
+    // Skin the "next" canvas was last drawn with; it is only redrawn on spawn or skin change
+    let nextSkin!: SkinId;
 
     function clearFullLines() {
       const cleared = clearLines(board);
@@ -119,7 +128,12 @@ export default function TetrisGame({
       if (collide(board, current.shape, current.x, current.y)) {
         endGame();
       }
-      drawNext(nextCtx, next);
+      renderNext();
+    }
+
+    function renderNext() {
+      nextSkin = skinRef.current;
+      drawNext(nextCtx, next, SKINS[nextSkin]);
     }
 
     function updateHUD() {
@@ -168,7 +182,8 @@ export default function TetrisGame({
         }
       }
       if (gameOver) return;
-      draw(ctx, board, current);
+      if (skinRef.current !== nextSkin) renderNext();
+      draw(ctx, board, current, SKINS[skinRef.current]);
       animId = requestAnimationFrame(loop);
     }
 
