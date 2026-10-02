@@ -1,6 +1,6 @@
 # SPEC 07 — Integración del juego Tetris
 
-> **Estado:** Aprobado · **Depende de:** SPEC 05, SPEC 06 · **Fecha:** 2026-10-02
+> **Estado:** Implementado · **Depende de:** SPEC 05, SPEC 06 · **Fecha:** 2026-10-02
 > **Objetivo:** Integrar Tetris como juego jugable en `/games/tetris/play`, con HUD de puntuación, líneas, nivel y vidas, y guardado del score en el leaderboard de Supabase.
 
 ---
