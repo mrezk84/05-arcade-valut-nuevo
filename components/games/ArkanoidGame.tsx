@@ -2,7 +2,14 @@
 
 import { useEffect, useRef } from 'react';
 import { LEVELS } from './arkanoid/levels';
-import { drawSprite, loadSpritesheet } from './arkanoid/sprites';
+import {
+  EXPLOSION_DURATION,
+  EXPLOSION_FRAMES,
+  drawFrame,
+  drawSprite,
+  loadSpritesheet,
+  type BlockColor,
+} from './arkanoid/sprites';
 
 interface ArkanoidGameProps {
   paused: boolean;
@@ -22,6 +29,26 @@ const PADDLE_SPEED = 400;
 const BASE_BALL_VX = 200;
 const BASE_BALL_VY = -300;
 const MAX_DT = 0.1; // s
+const LAST_LEVEL = LEVELS.length;
+const INITIAL_LIVES = 3;
+
+interface Block {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: BlockColor;
+  alive: boolean;
+}
+
+interface Explosion {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  color: BlockColor;
+  elapsed: number;
+}
 
 export default function ArkanoidGame({
   paused,
@@ -77,20 +104,44 @@ export default function ArkanoidGame({
 
         const paddle = { x: (W - 81) / 2, y: 560, w: 81, h: 14 };
         const ball = { x: 0, y: 0, w: 16, h: 16, vx: 0, vy: 0 };
-        const blocks = LEVELS[0].blocks.map((b) => ({
-          x: BLOCKS_ORIGIN_X + b.col * BLOCK_W,
-          y: BLOCKS_ORIGIN_Y + b.row * BLOCK_H,
-          color: b.color,
-        }));
+        let blocks: Block[] = [];
+        let explosions: Explosion[] = [];
+        let score = 0;
+        const lives = INITIAL_LIVES;
+        let currentLevel = 1;
+        let gameState: 'playing' | 'win' = 'playing';
 
         function initBall() {
-          const speed = LEVELS[0].speed;
+          const speed = LEVELS[currentLevel - 1].speed;
           ball.x = paddle.x + (paddle.w - ball.w) / 2;
           ball.y = paddle.y - ball.h;
           ball.vx = BASE_BALL_VX * speed;
           ball.vy = BASE_BALL_VY * speed;
         }
-        initBall();
+
+        function loadLevel(n: number) {
+          currentLevel = n;
+          blocks = LEVELS[n - 1].blocks.map((b) => ({
+            x: BLOCKS_ORIGIN_X + b.col * BLOCK_W,
+            y: BLOCKS_ORIGIN_Y + b.row * BLOCK_H,
+            w: BLOCK_W,
+            h: BLOCK_H,
+            color: b.color,
+            alive: true,
+          }));
+          explosions = [];
+          initBall();
+        }
+        loadLevel(1);
+
+        function collideAABB(block: Block) {
+          return (
+            ball.x < block.x + block.w &&
+            ball.x + ball.w > block.x &&
+            ball.y < block.y + block.h &&
+            ball.y + ball.h > block.y
+          );
+        }
 
         // ── Input ──────────────────────────────────────────────────────────────
         function onMouseMove(e: MouseEvent) {
@@ -115,6 +166,8 @@ export default function ArkanoidGame({
 
         // ── Update ─────────────────────────────────────────────────────────────
         function update(dt: number) {
+          if (gameState !== 'playing') return;
+
           if (keys.ArrowLeft)
             paddle.x = Math.max(0, paddle.x - PADDLE_SPEED * dt);
           if (keys.ArrowRight)
@@ -146,6 +199,30 @@ export default function ArkanoidGame({
             ball.y = paddle.y - ball.h;
             ball.vy = -Math.abs(ball.vy);
           }
+
+          // One block per frame
+          for (const block of blocks) {
+            if (!block.alive || !collideAABB(block)) continue;
+            block.alive = false;
+            explosions.push({
+              x: block.x,
+              y: block.y,
+              w: block.w,
+              h: block.h,
+              color: block.color,
+              elapsed: 0,
+            });
+            score += 10;
+            ball.vy = -ball.vy;
+            if (blocks.every((b) => !b.alive)) {
+              if (currentLevel < LAST_LEVEL) loadLevel(currentLevel + 1);
+              else gameState = 'win';
+            }
+            break;
+          }
+
+          for (const exp of explosions) exp.elapsed += dt * 1000;
+          explosions = explosions.filter((e) => e.elapsed < EXPLOSION_DURATION);
         }
 
         // ── Draw ───────────────────────────────────────────────────────────────
@@ -153,10 +230,41 @@ export default function ArkanoidGame({
           ctx.fillStyle = '#000';
           ctx.fillRect(0, 0, W, H);
           for (const b of blocks) {
-            drawSprite(ctx, `block_${b.color}`, b.x, b.y, BLOCK_W, BLOCK_H);
+            if (b.alive)
+              drawSprite(ctx, `block_${b.color}`, b.x, b.y, b.w, b.h);
+          }
+          for (const exp of explosions) {
+            const frameIndex = Math.min(
+              Math.floor((exp.elapsed / EXPLOSION_DURATION) * 4),
+              3,
+            );
+            drawFrame(
+              ctx,
+              EXPLOSION_FRAMES[exp.color][frameIndex],
+              exp.x,
+              exp.y,
+              exp.w,
+              exp.h,
+            );
           }
           drawSprite(ctx, 'paddle', paddle.x, paddle.y, paddle.w, paddle.h);
           drawSprite(ctx, 'ball', ball.x, ball.y, ball.w, ball.h);
+
+          if (gameState === 'playing') {
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 18px monospace';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillText(`Score: ${score}`, 10, 10);
+            ctx.textAlign = 'center';
+            ctx.fillText(`Nivel: ${currentLevel}`, W / 2, 10);
+            const ballSize = 16;
+            const ballSpacing = 4;
+            for (let i = 0; i < lives; i++) {
+              const bx = W - 10 - (lives - i) * (ballSize + ballSpacing);
+              drawSprite(ctx, 'ball', bx, 10, ballSize, ballSize);
+            }
+          }
         }
 
         // ── Loop ───────────────────────────────────────────────────────────────
