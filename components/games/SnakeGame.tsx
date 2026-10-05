@@ -4,7 +4,9 @@ import { useEffect, useRef } from 'react';
 import {
   CELL,
   COLS,
+  FRUITS_PER_LEVEL,
   INPUT_QUEUE_MAX,
+  POINTS_PER_FRUIT,
   ROWS,
   START_LENGTH,
   TICK_MIN,
@@ -177,12 +179,27 @@ export default function SnakeGame({
       col: 5 - i,
       row: 7,
     }));
-    const fruit: Fruit = {
-      col: 14,
-      row: 7,
-      name: FRUIT_NAMES[Math.floor(Math.random() * FRUIT_NAMES.length)],
-    };
-    const level = 1;
+    let score = 0;
+    let eaten = 0;
+    let level = 1;
+
+    // Elige entre las celdas libres, sin reintentar al azar. Sin celdas libres devuelve null (victoria, paso 6).
+    function spawnFruit(): Fruit | null {
+      const taken = new Set(snake.map((c) => c.row * COLS + c.col));
+      const free: number[] = [];
+      for (let i = 0; i < COLS * ROWS; i++) {
+        if (!taken.has(i)) free.push(i);
+      }
+      if (!free.length) return null;
+      const idx = free[Math.floor(Math.random() * free.length)];
+      return {
+        col: idx % COLS,
+        row: Math.floor(idx / COLS),
+        name: FRUIT_NAMES[Math.floor(Math.random() * FRUIT_NAMES.length)],
+      };
+    }
+
+    let fruit = spawnFruit();
 
     // Giros pendientes: cada uno se valida contra el último ya encolado, no contra la dirección actual.
     const queue: Dir[] = [];
@@ -209,7 +226,16 @@ export default function SnakeGame({
       // Provisional hasta el paso 6 (choques): la serpiente se detiene en el borde.
       if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
       snake.unshift({ col, row });
-      snake.pop();
+
+      if (fruit && fruit.col === col && fruit.row === row) {
+        // Comer: la cola no se retira, así que la serpiente crece 1 segmento.
+        eaten += 1;
+        score += POINTS_PER_FRUIT;
+        level = Math.floor(eaten / FRUITS_PER_LEVEL) + 1;
+        fruit = spawnFruit();
+      } else {
+        snake.pop();
+      }
     }
 
     let raf = 0;
@@ -244,7 +270,7 @@ export default function SnakeGame({
           }
 
           drawBoard(ctx);
-          drawFruit(ctx, img, fruit.name, fruit.col, fruit.row);
+          if (fruit) drawFruit(ctx, img, fruit.name, fruit.col, fruit.row);
           drawSnake(ctx, snake, dir, green);
           raf = requestAnimationFrame(frame);
         };
