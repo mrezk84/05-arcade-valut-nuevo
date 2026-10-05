@@ -29,6 +29,7 @@ const PADDLE_SPEED = 400;
 const BASE_BALL_VX = 200;
 const BASE_BALL_VY = -300;
 const MAX_DT = 0.1; // s
+const SOUNDS_PATH = '/games/arkanoid/sounds';
 const LAST_LEVEL = LEVELS.length;
 const INITIAL_LIVES = 3;
 
@@ -98,6 +99,21 @@ export default function ArkanoidGame({
     let raf = 0;
     let teardown: (() => void) | null = null;
 
+    const bounceSound = new Audio(`${SOUNDS_PATH}/ball-bounce.mp3`);
+    const breakSound = new Audio(`${SOUNDS_PATH}/break-sound.mp3`);
+    const playing = new Set<HTMLAudioElement>();
+
+    // One clone per hit so overlapping sounds don't cut each other. Never plays while paused
+    function play(sound: HTMLAudioElement) {
+      if (pausedRef.current) return;
+      const clone = sound.cloneNode() as HTMLAudioElement;
+      playing.add(clone);
+      clone.addEventListener('ended', () => playing.delete(clone), {
+        once: true,
+      });
+      clone.play().catch(() => playing.delete(clone));
+    }
+
     loadSpritesheet()
       .then(() => {
         if (cancelled) return;
@@ -107,9 +123,9 @@ export default function ArkanoidGame({
         let blocks: Block[] = [];
         let explosions: Explosion[] = [];
         let score = 0;
-        const lives = INITIAL_LIVES;
+        let lives = INITIAL_LIVES;
         let currentLevel = 1;
-        let gameState: 'playing' | 'win' = 'playing';
+        let gameState: 'playing' | 'win' | 'gameover' = 'playing';
 
         function initBall() {
           const speed = LEVELS[currentLevel - 1].speed;
@@ -133,6 +149,31 @@ export default function ArkanoidGame({
           initBall();
         }
         loadLevel(1);
+
+        // Report HUD values only when they change. Game over fires once, after the final lives value
+        let lastScore = -1;
+        let lastLives = -1;
+        let lastLevel = -1;
+        let overFired = false;
+        function emitChanges() {
+          if (score !== lastScore) {
+            lastScore = score;
+            cbScore.current(score);
+          }
+          if (lives !== lastLives) {
+            lastLives = lives;
+            cbLives.current(lives);
+          }
+          if (currentLevel !== lastLevel) {
+            lastLevel = currentLevel;
+            cbLevel.current(currentLevel);
+          }
+          if (gameState !== 'playing' && !overFired) {
+            overFired = true;
+            cbOver.current(score);
+          }
+        }
+        emitChanges();
 
         function collideAABB(block: Block) {
           return (
@@ -179,14 +220,17 @@ export default function ArkanoidGame({
           if (ball.x <= 0) {
             ball.x = 0;
             ball.vx = Math.abs(ball.vx);
+            play(bounceSound);
           }
           if (ball.x + ball.w >= W) {
             ball.x = W - ball.w;
             ball.vx = -Math.abs(ball.vx);
+            play(bounceSound);
           }
           if (ball.y <= 0) {
             ball.y = 0;
             ball.vy = Math.abs(ball.vy);
+            play(bounceSound);
           }
 
           if (
@@ -198,6 +242,7 @@ export default function ArkanoidGame({
           ) {
             ball.y = paddle.y - ball.h;
             ball.vy = -Math.abs(ball.vy);
+            play(bounceSound);
           }
 
           // One block per frame
@@ -214,6 +259,7 @@ export default function ArkanoidGame({
             });
             score += 10;
             ball.vy = -ball.vy;
+            play(breakSound);
             if (blocks.every((b) => !b.alive)) {
               if (currentLevel < LAST_LEVEL) loadLevel(currentLevel + 1);
               else gameState = 'win';
@@ -223,6 +269,16 @@ export default function ArkanoidGame({
 
           for (const exp of explosions) exp.elapsed += dt * 1000;
           explosions = explosions.filter((e) => e.elapsed < EXPLOSION_DURATION);
+
+          if (ball.y > H) {
+            lives--;
+            if (lives <= 0) {
+              lives = 0;
+              gameState = 'gameover';
+            } else {
+              initBall();
+            }
+          }
         }
 
         // ── Draw ───────────────────────────────────────────────────────────────
@@ -274,7 +330,10 @@ export default function ArkanoidGame({
           const dt = Math.min((timestamp - lastTime) / 1000, MAX_DT);
           lastTime = timestamp;
 
-          if (!pausedRef.current) update(dt);
+          if (!pausedRef.current) {
+            update(dt);
+            emitChanges();
+          }
           draw();
 
           raf = requestAnimationFrame(loop);
@@ -295,6 +354,16 @@ export default function ArkanoidGame({
       cancelled = true;
       cancelAnimationFrame(raf);
       teardown?.();
+      for (const clone of playing) {
+        clone.pause();
+        clone.removeAttribute('src');
+        clone.load();
+      }
+      playing.clear();
+      for (const sound of [bounceSound, breakSound]) {
+        sound.removeAttribute('src');
+        sound.load();
+      }
     };
   }, []);
 
