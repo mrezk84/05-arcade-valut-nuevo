@@ -1,0 +1,10 @@
+export const COLS = 20;
+export const ROWS = 15;
+export const CELL = 40;
+export const START_LENGTH = 3;
+export const TICK_START = 140; // ms
+export const TICK_STEP = 10; // ms menos por nivel
+export const TICK_MIN = 70; // ms
+export const FRUITS_PER_LEVEL = 5;
+export const POINTS_PER_FRUIT = 10;
+export const INPUT_QUEUE_MAX = 2;
