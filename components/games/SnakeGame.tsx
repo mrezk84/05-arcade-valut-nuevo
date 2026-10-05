@@ -209,7 +209,7 @@ export default function SnakeGame({
       const next = KEY_DIRS[e.code];
       if (!next) return;
       if (SCROLL_KEYS.has(e.code)) e.preventDefault();
-      if (pausedRef.current) return;
+      if (pausedRef.current || gameOver) return;
       if (queue.length >= INPUT_QUEUE_MAX) return;
 
       const last = queue.length ? queue[queue.length - 1] : dir;
@@ -219,20 +219,64 @@ export default function SnakeGame({
       queue.push(next);
     }
 
+    // Cada callback solo se dispara cuando su valor cambia. Al montar se emite el estado inicial.
+    let gameOver = false;
+    let lastScore = -1;
+    let lastLength = -1;
+    let lastLevel = -1;
+
+    function emit() {
+      if (score !== lastScore) {
+        lastScore = score;
+        cbScore.current(score);
+      }
+      if (snake.length !== lastLength) {
+        lastLength = snake.length;
+        cbLength.current(snake.length);
+      }
+      if (level !== lastLevel) {
+        lastLevel = level;
+        cbLevel.current(level);
+      }
+    }
+
+    function endGame() {
+      if (gameOver) return;
+      gameOver = true;
+      cbOver.current(score);
+    }
+
+    emit();
+
     function step() {
       if (queue.length) dir = queue.shift()!;
       const col = snake[0].col + dir.dx;
       const row = snake[0].row + dir.dy;
-      // Provisional hasta el paso 6 (choques): la serpiente se detiene en el borde.
-      if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+
+      if (col < 0 || col >= COLS || row < 0 || row >= ROWS) {
+        endGame();
+        return;
+      }
+
+      const eats = fruit !== null && fruit.col === col && fruit.row === row;
+
+      // Si no come, la cola se retira en este mismo tick, así que su celda queda libre para la cabeza.
+      const body = eats ? snake : snake.slice(0, -1);
+      if (body.some((c) => c.col === col && c.row === row)) {
+        endGame();
+        return;
+      }
+
       snake.unshift({ col, row });
 
-      if (fruit && fruit.col === col && fruit.row === row) {
+      if (eats) {
         // Comer: la cola no se retira, así que la serpiente crece 1 segmento.
         eaten += 1;
         score += POINTS_PER_FRUIT;
         level = Math.floor(eaten / FRUITS_PER_LEVEL) + 1;
         fruit = spawnFruit();
+        emit();
+        if (!fruit) endGame(); // tablero lleno: victoria
       } else {
         snake.pop();
       }
@@ -260,10 +304,10 @@ export default function SnakeGame({
             acc = 0;
           }
 
-          if (!pausedRef.current) {
+          if (!pausedRef.current && !gameOver) {
             acc += dt;
             const tick = tickFor(level);
-            while (acc >= tick) {
+            while (!gameOver && acc >= tick) {
               acc -= tick;
               step();
             }
