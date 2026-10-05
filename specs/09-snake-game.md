@@ -1,6 +1,6 @@
 # SPEC 09 — Integración del juego Snake
 
-> **Estado:** Aprobado· **Depende de:** SPEC 06, SPEC 07, SPEC 08 · **Fecha:** 2026-10-05
+> **Estado:** Implementado · **Depende de:** SPEC 06, SPEC 07, SPEC 08 · **Fecha:** 2026-10-05
 > **Objetivo:** Integrar Snake como juego jugable en `/games/snake/play`, con HUD de puntuación, longitud y nivel, y guardado del score en el leaderboard de Supabase.
 
 ---
