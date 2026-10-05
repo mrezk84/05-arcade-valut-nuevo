@@ -1,7 +1,16 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { CELL, COLS, ROWS, START_LENGTH } from './snake/constants';
+import {
+  CELL,
+  COLS,
+  INPUT_QUEUE_MAX,
+  ROWS,
+  START_LENGTH,
+  TICK_MIN,
+  TICK_START,
+  TICK_STEP,
+} from './snake/constants';
 import {
   FRUIT_NAMES,
   drawFruit,
@@ -23,6 +32,29 @@ const BOARD_A = '#07100c';
 const BOARD_B = '#0a1510';
 const SEGMENT_INSET = 4;
 const FALLBACK_GREEN = '#00ff88';
+const MAX_DT = 100; // ms
+
+const KEY_DIRS: Record<string, Dir> = {
+  ArrowUp: { dx: 0, dy: -1 },
+  ArrowDown: { dx: 0, dy: 1 },
+  ArrowLeft: { dx: -1, dy: 0 },
+  ArrowRight: { dx: 1, dy: 0 },
+  KeyW: { dx: 0, dy: -1 },
+  KeyS: { dx: 0, dy: 1 },
+  KeyA: { dx: -1, dy: 0 },
+  KeyD: { dx: 1, dy: 0 },
+};
+// Solo las flechas provocan scroll; WASD no se bloquea.
+const SCROLL_KEYS = new Set([
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+]);
+
+function tickFor(level: number) {
+  return Math.max(TICK_MIN, TICK_START - (level - 1) * TICK_STEP);
+}
 
 interface Cell {
   col: number;
@@ -140,7 +172,7 @@ export default function SnakeGame({
         .trim() || FALLBACK_GREEN;
 
     // Estado inicial: cabeza en (5, 7), cuerpo a su izquierda, avanzando a la derecha.
-    const dir: Dir = { dx: 1, dy: 0 };
+    let dir: Dir = { dx: 1, dy: 0 };
     const snake: Cell[] = Array.from({ length: START_LENGTH }, (_, i) => ({
       col: 5 - i,
       row: 7,
@@ -150,18 +182,83 @@ export default function SnakeGame({
       row: 7,
       name: FRUIT_NAMES[Math.floor(Math.random() * FRUIT_NAMES.length)],
     };
+    const level = 1;
+
+    // Giros pendientes: cada uno se valida contra el último ya encolado, no contra la dirección actual.
+    const queue: Dir[] = [];
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const next = KEY_DIRS[e.code];
+      if (!next) return;
+      if (SCROLL_KEYS.has(e.code)) e.preventDefault();
+      if (pausedRef.current) return;
+      if (queue.length >= INPUT_QUEUE_MAX) return;
+
+      const last = queue.length ? queue[queue.length - 1] : dir;
+      const isOpposite = next.dx === -last.dx && next.dy === -last.dy;
+      const isSame = next.dx === last.dx && next.dy === last.dy;
+      if (isOpposite || isSame) return;
+      queue.push(next);
+    }
+
+    function step() {
+      if (queue.length) dir = queue.shift()!;
+      const col = snake[0].col + dir.dx;
+      const row = snake[0].row + dir.dy;
+      // Provisional hasta el paso 6 (choques): la serpiente se detiene en el borde.
+      if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return;
+      snake.unshift({ col, row });
+      snake.pop();
+    }
+
+    let raf = 0;
+    let removeKeys: (() => void) | undefined;
 
     loadFruits()
       .then((img) => {
         if (cancelled) return;
-        drawBoard(ctx);
-        drawFruit(ctx, img, fruit.name, fruit.col, fruit.row);
-        drawSnake(ctx, snake, dir, green);
+
+        let last = performance.now();
+        let acc = 0;
+        let wasPaused = pausedRef.current;
+
+        const frame = (now: number) => {
+          const dt = Math.min(MAX_DT, Math.max(0, now - last));
+          last = now;
+
+          if (pausedRef.current !== wasPaused) {
+            // Al pausar y al reanudar: sin giros pendientes ni pasos acumulados.
+            wasPaused = pausedRef.current;
+            queue.length = 0;
+            acc = 0;
+          }
+
+          if (!pausedRef.current) {
+            acc += dt;
+            const tick = tickFor(level);
+            while (acc >= tick) {
+              acc -= tick;
+              step();
+            }
+          }
+
+          drawBoard(ctx);
+          drawFruit(ctx, img, fruit.name, fruit.col, fruit.row);
+          drawSnake(ctx, snake, dir, green);
+          raf = requestAnimationFrame(frame);
+        };
+
+        window.addEventListener('keydown', onKeyDown);
+        removeKeys = () => window.removeEventListener('keydown', onKeyDown);
+        raf = requestAnimationFrame(frame);
       })
       .catch(() => {});
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(raf);
+      removeKeys?.();
     };
   }, []);
 
