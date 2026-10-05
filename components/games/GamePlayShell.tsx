@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useUser } from '@/app/context/UserContext';
 import { createClient } from '@/lib/supabase/client';
 
 const MAX_SCORE = 10_000_000;
+const REDIRECT_DELAY = 1200; // ms, para que se vea "PUNTUACIÓN GUARDADA"
 
 interface GamePlayShellProps {
   gameId: string;
@@ -35,6 +37,7 @@ export default function GamePlayShell({
   children,
 }: GamePlayShellProps) {
   const { user } = useUser();
+  const router = useRouter();
 
   const [name, setName] = useState(user ?? 'INVITADO');
   const [saved, setSaved] = useState(false);
@@ -46,6 +49,13 @@ export default function GamePlayShell({
       if (stored) setName(stored);
     }
   }, [over]);
+
+  // Tras guardar, lleva al leaderboard del juego.
+  useEffect(() => {
+    if (!saved) return;
+    const t = setTimeout(() => router.push(`/games/${gameId}`), REDIRECT_DELAY);
+    return () => clearTimeout(t);
+  }, [saved, router, gameId]);
 
   function restart() {
     setSaved(false);
