@@ -57,6 +57,7 @@ Typical flow to add a game: `game-planner` → `/add-game <ref>` → review spec
 ## Agents
 
 - `game-planner` (`.claude/agents/game-planner.md`) — decides which game fits the platform and recommends the next one (3 candidates scored against a rubric). Read-only on the project; its only write target is `references/game-suggestiones-todo.md`, which is also its memory: every suggestion, its status (pending/accepted/rejected/implemented) and the user's preferences live there.
+- `game-jam` (`.claude/agents/game-jam.md`) — given a theme, designs one game and writes at least two complete specs (`01-<id>-game.md` playable integration + `02-<id>-<extension>.md`) in `specs/game-jam/<game-id>/`, in `Borrador` state and in the same format as specs 07–09. Its only write target is that folder. Flow: `@game-jam <tema>` → review `specs/game-jam/<id>/` → `/spec-impl specs/game-jam/<id>/01-<id>-game.md`.
 
 ## Architecture
 
