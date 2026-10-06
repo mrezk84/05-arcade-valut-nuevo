@@ -52,7 +52,11 @@ Project skills live in `.agents/skills/` (mirrored in `.claude/skills/`; version
 - `/add-game` — **custom skill**. Generates the spec to integrate a playable canvas game plus its leaderboard (reference folder from `references/started-games/` or a new game). It only writes the spec in `specs/NN-<id>-game.md`; implementation is done afterwards with `/spec-impl`. Its technical contract is in `.agents/skills/add-game/reference/integration.md`.
 - `/supabase` and `/supabase-postgres-best-practices` — load before any database, RLS, migration or `@supabase/ssr` work.
 
-Typical flow to add a game: `/add-game <ref>` → review spec → `/spec-impl specs/NN-<id>-game.md`.
+Typical flow to add a game: `game-planner` → `/add-game <ref>` → review spec → `/spec-impl specs/NN-<id>-game.md`.
+
+## Agents
+
+- `game-planner` (`.claude/agents/game-planner.md`) — decides which game fits the platform and recommends the next one (3 candidates scored against a rubric). Read-only on the project; its only write target is `references/game-suggestiones-todo.md`, which is also its memory: every suggestion, its status (pending/accepted/rejected/implemented) and the user's preferences live there.
 
 ## Architecture
 
@@ -62,7 +66,6 @@ Uses Next.js **App Router** exclusively — no `pages/` directory.
 
 - `/` — home landing (`page.tsx`, `RevealObserver.tsx` for scroll reveal)
 - `/games` — game index (`GamesGrid.tsx`)+ per-game routes like `asteroids`, `tetris`, `arkanoid`, `snake` and more... (`/references/implemented-games.md` ) when you need to check rith games are implemented and how to implement new ones.
-
 
 - `/games/[id]` — game detail + leaderboard
 - `/games/<id>/play` — play-page per game: `asteroids`, `tetris`, `arkanoid`, `snake` (each a dedicated folder). `app/games/[id]/play/page.tsx` is the generic fallback with simulated score, not a real game.
