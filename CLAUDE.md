@@ -58,6 +58,7 @@ Typical flow to add a game: `game-planner` → `/add-game <ref>` → review spec
 
 - `game-planner` (`.claude/agents/game-planner.md`) — decides which game fits the platform and recommends the next one (3 candidates scored against a rubric). Read-only on the project; its only write target is `references/game-suggestiones-todo.md`, which is also its memory: every suggestion, its status (pending/accepted/rejected/implemented) and the user's preferences live there.
 - `game-jam` (`.claude/agents/game-jam.md`) — given a theme, designs one game and writes at least two complete specs (`01-<id>-game.md` playable integration + `02-<id>-<extension>.md`) in `specs/game-jam/<game-id>/`, in `Borrador` state and in the same format as specs 07–09. Its only write target is that folder. Flow: `@game-jam <tema>` → review `specs/game-jam/<id>/` → `/spec-impl specs/game-jam/<id>/01-<id>-game.md`.
+- `skin-designer` (`.claude/agents/skin-designer.md`) — works on **one game per invocation** (`@skin-designer <game-id>`): leaves it with at least the skins `classic` (default), `neon` and `retro`, all checked for dark mode (WCAG contrast), and implements the code (`components/games/<id>/skins.ts`, skin selector in the play-page). Never touches games it was not asked for. Its memory is `references/game-with-themes.md` (which games have skins and their dark-mode status); it only updates the row of the game it worked on.
 
 ## Architecture
 
@@ -94,6 +95,7 @@ Uses Next.js **App Router** exclusively — no `pages/` directory.
 - `GamePlayShell.tsx` — common shell for every play-page: HUD (stats), pause, force end, restart, game-over modal that saves the score to `scores` (clamped to 0–10 000 000), and **redirects to `/games/<id>` (leaderboard) after saving**. Games do not implement their own game-over, pause overlay or local leaderboard.
 - `<Name>Game.tsx` — canvas component (`AsteroidsGame`, `TetrisGame`, `ArkanoidGame`, `SnakeGame`). It receives `paused` from the shell and reports state through callbacks (`onScoreChange`, `onGameOver(score)`, etc.).
 - Per-game helper modules in subfolders: `tetris/` (board, pieces, draw, skins, `useSkin` — 4 skins persisted in localStorage), `arkanoid/` (levels, sprites), `snake/` (constants, sprites).
+- Skins: games that have them follow the contract in `.claude/agents/skin-designer.md` (`components/games/<id>/skins.ts`, ids `classic|neon|retro` + extras, `<id>-skin` in localStorage). Which games have them: `references/game-with-themes.md`.
 - Game assets go in `public/games/<id>/`.
 - New `.cover-*` classes for game covers live in `app/globals.css`.
 
