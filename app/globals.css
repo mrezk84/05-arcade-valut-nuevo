@@ -1197,6 +1197,22 @@ a {
   outline: none;
 }
 
+/* shared skin selector (components/games/skins/SkinSelect.tsx) */
+.skin-select {
+  font-family: var(--pixel);
+  font-size: 10px;
+  color: var(--cyan);
+  background: var(--bg-3);
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.skin-select:hover,
+.skin-select:focus-visible {
+  border-color: var(--cyan);
+  outline: none;
+}
+
 /* fake in-screen game */
 .game-arena {
   position: absolute;
