@@ -4,15 +4,14 @@ import { useEffect, useRef } from 'react';
 import { LEVELS } from './arkanoid/levels';
 import {
   EXPLOSION_DURATION,
-  EXPLOSION_FRAMES,
-  drawFrame,
-  drawSprite,
   loadSpritesheet,
   type BlockColor,
 } from './arkanoid/sprites';
+import { SKINS, type ArkanoidSkin, type SkinId } from './arkanoid/skins';
 
 interface ArkanoidGameProps {
   paused: boolean;
+  skin: SkinId;
   onScoreChange: (score: number) => void;
   onLivesChange: (lives: number) => void;
   onLevelChange: (level: number) => void;
@@ -53,6 +52,7 @@ interface Explosion {
 
 export default function ArkanoidGame({
   paused,
+  skin,
   onScoreChange,
   onLivesChange,
   onLevelChange,
@@ -66,10 +66,15 @@ export default function ArkanoidGame({
   const cbLives = useRef(onLivesChange);
   const cbLevel = useRef(onLevelChange);
   const cbOver = useRef(onGameOver);
+  // Read inside the loop so switching skins never restarts the game
+  const skinRef = useRef(skin);
 
   useEffect(() => {
     pausedRef.current = paused;
   }, [paused]);
+  useEffect(() => {
+    skinRef.current = skin;
+  }, [skin]);
   useEffect(() => {
     cbScore.current = onScoreChange;
   }, [onScoreChange]);
@@ -98,6 +103,13 @@ export default function ArkanoidGame({
     let cancelled = false;
     let raf = 0;
     let teardown: (() => void) | null = null;
+
+    // ── Skin (visual only; refreshed every frame from skinRef) ──────────────
+    let S: ArkanoidSkin = SKINS[skinRef.current];
+    // Press Start 2P family injected by next/font on <html>; empty if missing
+    const pixelFamily = getComputedStyle(canvas)
+      .getPropertyValue('--font-press-start')
+      .trim();
 
     const bounceSound = new Audio(`${SOUNDS_PATH}/ball-bounce.mp3`);
     const breakSound = new Audio(`${SOUNDS_PATH}/break-sound.mp3`);
@@ -283,44 +295,48 @@ export default function ArkanoidGame({
 
         // ── Draw ───────────────────────────────────────────────────────────────
         function draw() {
-          ctx.fillStyle = '#000';
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = S.bg;
           ctx.fillRect(0, 0, W, H);
+          S.drawBackdrop?.(ctx, W, H);
           for (const b of blocks) {
-            if (b.alive)
-              drawSprite(ctx, `block_${b.color}`, b.x, b.y, b.w, b.h);
+            if (b.alive) S.drawBlock(ctx, b.color, b.x, b.y, b.w, b.h);
           }
           for (const exp of explosions) {
-            const frameIndex = Math.min(
-              Math.floor((exp.elapsed / EXPLOSION_DURATION) * 4),
-              3,
-            );
-            drawFrame(
+            S.drawExplosion(
               ctx,
-              EXPLOSION_FRAMES[exp.color][frameIndex],
+              exp.color,
+              exp.elapsed / EXPLOSION_DURATION,
               exp.x,
               exp.y,
               exp.w,
               exp.h,
             );
           }
-          drawSprite(ctx, 'paddle', paddle.x, paddle.y, paddle.w, paddle.h);
-          drawSprite(ctx, 'ball', ball.x, ball.y, ball.w, ball.h);
+          S.drawPaddle(ctx, paddle.x, paddle.y, paddle.w, paddle.h);
+          S.drawBall(ctx, ball.x, ball.y, ball.w, ball.h);
 
           if (gameState === 'playing') {
-            ctx.fillStyle = '#fff';
-            ctx.font = 'bold 18px monospace';
+            ctx.fillStyle = S.hudText;
+            ctx.font = S.hudFont(pixelFamily);
             ctx.textAlign = 'left';
             ctx.textBaseline = 'top';
+            if (S.hudGlow) {
+              ctx.shadowBlur = S.hudGlow;
+              ctx.shadowColor = S.hudText;
+            }
             ctx.fillText(`Score: ${score}`, 10, 10);
             ctx.textAlign = 'center';
             ctx.fillText(`Nivel: ${currentLevel}`, W / 2, 10);
+            ctx.shadowBlur = 0;
             const ballSize = 16;
             const ballSpacing = 4;
             for (let i = 0; i < lives; i++) {
               const bx = W - 10 - (lives - i) * (ballSize + ballSpacing);
-              drawSprite(ctx, 'ball', bx, 10, ballSize, ballSize);
+              S.drawBall(ctx, bx, 10, ballSize, ballSize);
             }
           }
+          S.drawOverlay?.(ctx, W, H);
         }
 
         // ── Loop ───────────────────────────────────────────────────────────────
@@ -334,6 +350,7 @@ export default function ArkanoidGame({
             update(dt);
             emitChanges();
           }
+          S = SKINS[skinRef.current];
           draw();
 
           raf = requestAnimationFrame(loop);
