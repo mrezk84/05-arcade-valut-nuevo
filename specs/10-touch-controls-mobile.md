@@ -3,7 +3,7 @@
 > **Estado:** Aprobado · **Depende de:** SPEC 05, SPEC 07, SPEC 08, SPEC 09 · **Fecha:** 2026-10-08
 > **Objetivo:** Permitir jugar Asteroids, Tetris, Arkanoid y Snake en un móvil, con el canvas arriba y un mando virtual (cruceta y hasta 2 botones) debajo, visible solo en dispositivos táctiles.
 
-> **Nota de revisión:** las secciones Scope y Data model fueron revisadas y confirmadas por el usuario. Implementation plan, Acceptance criteria, Decisiones y Riesgos son un borrador sin revisar: leerlas y ajustarlas antes de pasar a `Aprobado`.
+> **Nota de verificación:** los criterios se comprobaron con un móvil emulado (Chromium con táctil y `pointer: coarse`, 360×640 a 412×915). Falta confirmarlos en un móvil real antes de pasar a `Implementado`.
 
 ---
 
@@ -20,7 +20,8 @@
   - Snake: ← ↑ → ↓. Sin botones A/B.
 - Los botones sin uso no se muestran. La cruceta se adapta al juego (por ejemplo, Arkanoid solo necesita ← →).
 - Layout móvil de `/games/<id>/play`, solo con `@media (hover: none) and (pointer: coarse)`:
-  - De arriba abajo: HUD compacto con las stats del propio juego en una sola franja, canvas escalado al espacio disponible manteniendo su proporción, mando virtual y, al pie, en una sola fila, PAUSA/REANUDAR, REGRESAR (enlace a `/games/<id>`) y el selector de skins (cuando el juego lo tiene). Hay unos 30 px de separación entre la pantalla y la flecha ↑ de la cruceta.
+  - De arriba abajo: canvas escalado al espacio disponible manteniendo su proporción, mando virtual y, al pie, en una sola fila, PAUSA/REANUDAR, REGRESAR (enlace a `/games/<id>`) y el selector de skins (cuando el juego lo tiene). Hay unos 50 px de separación entre el borde de la pantalla y la flecha ↑ de la cruceta. La franja de stats (puntuación, vidas/longitud, nivel) se oculta en móvil para dejar la altura al juego: durante la partida solo se ve la puntuación que dibujan Asteroids y Arkanoid en su propio canvas; en Tetris y Snake la puntuación solo se ve en el modal final.
+  - El modal de fin de partida se adapta al ancho del móvil: el campo de nombre y los botones se apilan a todo el ancho del recuadro (solo CSS, sin tocar su lógica).
   - Se ocultan por completo el Nav (incluido su menú móvil), el footer del sitio, el bloque JUGADOR, los botones FIN y SALIR y la barra `crt-bottom` del CRT. El shell marca `<html>` con la clase `av-gamepad` mientras el mando está montado, y el CSS oculta el chrome del sitio con ella.
 - Solo portrait. En landscape se muestra un aviso "gira el dispositivo" en lugar del juego, y el juego se pausa.
 - `viewport` explícito en `app/layout.tsx` (`width=device-width`, `initial-scale=1`), y los controles evitan zoom, scroll y menú contextual al tocar (`touch-action: none`, `user-select: none`).
@@ -33,7 +34,7 @@
 - Vibración háptica, pantalla completa y bloqueo de orientación.
 - Soporte landscape.
 - Cambios responsive en `/`, `/games`, `/games/[id]`, `/hall-of-fame`, `/about` y el Nav.
-- Cambios en la lógica interna de los 4 juegos y en el modal de fin de partida.
+- Cambios en la lógica interna de los 4 juegos y en la lógica del modal de fin de partida (solo se adapta su CSS en móvil).
 - Cualquier cambio visible en escritorio.
 - Gamepads físicos y mando Bluetooth.
 - Tests automatizados (no hay runner configurado).
@@ -117,7 +118,7 @@ Reglas de emisión:
 
 1. **`TouchControls.tsx`.** Tipos, emisión de `KeyboardEvent`, auto-repeat, Pointer Events con captura, `keyup` al soltar, cancelar, deshabilitar y desmontar. Aún no se usa en ninguna página.
 2. **Shell y CSS base.** Prop opcional `touch` en `GamePlayShell`, clase `av-player--touch`, render de `TouchControls`, y un pie móvil con PAUSA/REANUDAR y el `hudExtra` (selector de skins) renderizado una sola vez. Estilos del mando en `app/globals.css`. Todo bajo `@media (hover: none) and (pointer: coarse)`.
-3. **Layout móvil.** Con la clase `av-player--touch` en móvil: ocultar Nav, footer del sitio, JUGADOR, FIN, SALIR y `crt-bottom`; HUD compacto en una franja; canvas escalado al espacio disponible (`dvh`) con su proporción.
+3. **Layout móvil.** Con la clase `av-player--touch` en móvil: ocultar Nav, footer del sitio, la franja de stats, JUGADOR, FIN, SALIR y `crt-bottom`; canvas escalado al espacio disponible (`dvh`) con su proporción.
 4. **Landscape.** Aviso "gira el dispositivo" y pausa automática al entrar en landscape (el shell llama a `onTogglePause` si el juego no estaba pausado).
 5. **Asteroids y Tetris.** Pasar `touch` en sus play-pages con el mapeo de la tabla (cruceta y botones A/B). Comprobar que la caída y el movimiento repetido de Tetris funcionan con `repeat`.
 6. **Arkanoid y Snake.** Pasar `touch` en sus play-pages (solo cruceta). Comprobar que Snake no llena su cola de giros.
@@ -129,22 +130,23 @@ Reglas de emisión:
 
 > Borrador sin revisar.
 
-- [ ] En un dispositivo con `(hover: none) and (pointer: coarse)`, las 4 play-pages muestran el canvas arriba y el mando virtual debajo.
-- [ ] En escritorio (ratón), las 4 play-pages se ven y funcionan exactamente igual que antes.
-- [ ] Asteroids: ← → rotan la nave, ↑ y B dan empuje, ↓ no hace nada, A dispara, y se pueden mantener A y ← a la vez con dos dedos.
-- [ ] Tetris: ← → ↓ mueven la pieza y repiten al mantener pulsado, ↑ y A rotan sin repetirse, B hace caída rápida sin repetirse.
-- [ ] Arkanoid: ← → mueven el paddle mientras se mantienen pulsados y no hay botones A/B visibles.
-- [ ] Snake: las 4 direcciones giran la serpiente, y no hay botones A/B visibles.
-- [ ] Soltar el dedo, o sacarlo del control, detiene el movimiento: no quedan teclas "pegadas".
-- [ ] Al pausar o al terminar la partida, el mando no envía teclas al juego.
-- [ ] En móvil se ocultan por completo Nav (y su menú), footer, JUGADOR, FIN, SALIR y `crt-bottom`; se ven las stats del juego y, debajo del mando, PAUSA/REANUDAR, REGRESAR y, si el juego lo tiene, el selector de skins.
-- [ ] REGRESAR lleva a `/games/<id>`.
-- [ ] El canvas no se corta ni desborda en un móvil de ~360×640 CSS px en portrait, y mantiene su proporción.
-- [ ] En landscape se muestra el aviso y el juego queda pausado.
-- [ ] Tocar los controles no hace zoom, scroll ni abre el menú contextual.
-- [ ] El modal de fin de partida y el guardado del score siguen funcionando con el mando.
-- [ ] `/games/[id]/play` (genérica) no cambia.
-- [ ] `npm run lint` y `npm run build` pasan.
+- [x] En un dispositivo con `(hover: none) and (pointer: coarse)`, las 4 play-pages muestran el canvas arriba y el mando virtual debajo.
+- [x] En escritorio (ratón), las 4 play-pages se ven y funcionan exactamente igual que antes.
+- [x] Asteroids: ← → rotan la nave, ↑ y B dan empuje, ↓ no hace nada, A dispara, y se pueden mantener A y ← a la vez con dos dedos.
+- [x] Tetris: ← → ↓ mueven la pieza y repiten al mantener pulsado, ↑ y A rotan sin repetirse, B hace caída rápida sin repetirse.
+- [x] Arkanoid: ← → mueven el paddle mientras se mantienen pulsados y no hay botones A/B visibles.
+- [x] Snake: las 4 direcciones giran la serpiente, y no hay botones A/B visibles.
+- [x] Soltar el dedo, o sacarlo del control, detiene el movimiento: no quedan teclas "pegadas".
+- [x] Al pausar o al terminar la partida, el mando no envía teclas al juego.
+- [x] En móvil se ocultan por completo Nav (y su menú), footer, JUGADOR, FIN, SALIR y `crt-bottom`; no se ve la franja de stats y, debajo del mando, PAUSA/REANUDAR, REGRESAR y, si el juego lo tiene, el selector de skins.
+- [x] REGRESAR lleva a `/games/<id>`.
+- [x] El canvas no se corta ni desborda en un móvil de ~360×640 CSS px en portrait, y mantiene su proporción.
+- [x] En landscape se muestra el aviso y el juego queda pausado.
+- [x] Tocar los controles no hace zoom, scroll ni abre el menú contextual.
+- [x] En móvil, el campo de nombre y todos los botones del modal quedan dentro del recuadro (360 px).
+- [ ] El modal de fin de partida y el guardado del score siguen funcionando con el mando. _(El modal se ve por encima del mando y sus botones responden al toque; el guardado en Supabase no se probó para no insertar puntuaciones de prueba. Probarlo en un móvil real.)_
+- [x] `/games/[id]/play` (genérica) no cambia.
+- [ ] `npm run lint` y `npm run build` pasan. _(`build` pasa. `lint` da 8 errores previos a esta spec, en `app/page.tsx`, `app/games/[id]/play/page.tsx` y el efecto de `av_player_name` de `GamePlayShell.tsx`; ninguno es de esta spec.)_
 
 ---
 

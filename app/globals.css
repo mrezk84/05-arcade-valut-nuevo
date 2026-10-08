@@ -1049,7 +1049,7 @@ a {
     align-items: center;
     justify-content: space-around;
     gap: 8px;
-    padding: 30px 8px 6px;
+    padding: 42px 8px 6px;
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
@@ -1080,11 +1080,11 @@ a {
      HUD wrappers dissolve so stats, CRT and footer items are grid cells of .av-player */
   .av-player.av-player--touch {
     display: grid;
-    grid-template-columns: repeat(var(--hud-cols, 3), minmax(0, 1fr));
-    --footer-row: 5;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    --footer-row: 4;
     --pad-dir: clamp(44px, 13vw, 54px);
     --pad-act: clamp(54px, 17vw, 70px);
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
     gap: 6px;
     height: 100dvh;
     max-width: none;
@@ -1101,25 +1101,18 @@ a {
   .av-player--touch .crt-bottom {
     display: none;
   }
+  /* Stats strip (score, lives, level...) takes screen height the game needs: hidden on touch */
   .av-player--touch .hud-stats > .hud-stat {
-    grid-row: 1;
-    align-items: center;
-    padding: 6px 4px;
-    text-align: center;
-    border: 1px solid var(--line);
-    background: var(--bg-2);
+    display: none;
   }
   .av-player--touch .hud-stat .l {
     font-size: 8px;
-  }
-  .av-player--touch .hud-stat .v {
-    font-size: 11px;
   }
 
   /* CRT: 4:3 screens fill the width and the CRT hugs them (the pad takes the free height) */
   .av-player--touch .crt {
     grid-column: 1 / -1;
-    grid-row: 2;
+    grid-row: 1;
     min-height: 0;
     padding: 8px;
     border-radius: 18px;
@@ -1134,8 +1127,8 @@ a {
   }
   /* Tetris is a tall board: its CRT takes the free height and the screen fills it (cq units of .crt) */
   .av-player--touch:has(.tetris-stage) {
-    --footer-row: 4;
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    --footer-row: 3;
+    grid-template-rows: minmax(0, 1fr) auto auto;
   }
   .av-player--touch:has(.tetris-stage) .crt {
     container-type: size;
@@ -1156,7 +1149,7 @@ a {
 
   .av-player--touch .touch-controls {
     grid-column: 1 / -1;
-    grid-row: 3;
+    grid-row: 2;
   }
   .av-player--touch .touch-pause,
   .av-player--touch .touch-back {
@@ -1218,6 +1211,37 @@ a {
       letter-spacing: 0.16em;
       text-transform: uppercase;
     }
+  }
+
+  /* Game-over modal: the save row and the actions stack so nothing leaves the box */
+  .av-player--touch .modal {
+    width: 100%;
+    max-width: 480px;
+    min-width: 0;
+    padding: 24px 16px;
+  }
+  .av-player--touch .modal h2 {
+    font-size: 16px;
+  }
+  .av-player--touch .modal .final {
+    font-size: 28px;
+  }
+  .av-player--touch .modal .input-row {
+    flex-direction: column;
+  }
+  .av-player--touch .modal .input-row input {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+  }
+  .av-player--touch .modal .btn {
+    width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+  .av-player--touch .modal .actions {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .touch-dpad {

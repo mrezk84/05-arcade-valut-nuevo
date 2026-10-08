@@ -111,14 +111,7 @@ export default function GamePlayShell({
   }
 
   return (
-    <div
-      className={`av-player fade-in${touch ? ' av-player--touch' : ''}`}
-      style={
-        touch
-          ? ({ '--hud-cols': stats.length } as React.CSSProperties)
-          : undefined
-      }
-    >
+    <div className={`av-player fade-in${touch ? ' av-player--touch' : ''}`}>
       <div className="player-hud">
         <div className="hud-stats">
           <div className="hud-stat hud-player">
