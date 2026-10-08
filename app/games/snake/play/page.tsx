@@ -4,6 +4,14 @@ import dynamic from 'next/dynamic';
 import { useState, useCallback } from 'react';
 import GamePlayShell from '@/components/games/GamePlayShell';
 import { START_LENGTH } from '@/components/games/snake/constants';
+import SkinSelect from '@/components/games/skins/SkinSelect';
+import { useGameSkin } from '@/components/games/skins/useGameSkin';
+import {
+  DEFAULT_SKIN,
+  SKIN_IDS,
+  SKIN_OPTIONS,
+  SKIN_STORAGE_KEY,
+} from '@/components/games/snake/skins';
 
 const SnakeGame = dynamic(() => import('@/components/games/SnakeGame'), {
   ssr: false,
@@ -16,6 +24,7 @@ export default function SnakePlay() {
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [gameKey, setGameKey] = useState(0);
+  const [skin, setSkin] = useGameSkin(SKIN_STORAGE_KEY, SKIN_IDS, DEFAULT_SKIN);
 
   const handleScoreChange = useCallback((s: number) => setScore(s), []);
   const handleLengthChange = useCallback((l: number) => setLength(l), []);
@@ -54,10 +63,19 @@ export default function SnakePlay() {
         score={score}
         onForceEnd={() => setOver(true)}
         onRestart={restart}
+        hudExtra={
+          <SkinSelect
+            id="snake-skin"
+            value={skin}
+            options={SKIN_OPTIONS}
+            onChange={setSkin}
+          />
+        }
       >
         <SnakeGame
           key={gameKey}
           paused={paused || over}
+          skin={skin}
           onScoreChange={handleScoreChange}
           onLengthChange={handleLengthChange}
           onLevelChange={handleLevelChange}
