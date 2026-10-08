@@ -1027,6 +1027,365 @@ a {
   display: flex;
   gap: 10px;
 }
+.hud-stats {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+/* Wrapper is layout-neutral: hudExtra stays a direct flex child of the HUD row */
+.hud-extra {
+  display: contents;
+}
+
+/* ===== touch controls (mobile only, see SPEC 10) ===== */
+.touch-controls,
+.touch-footer,
+.touch-rotate,
+.touch-stats,
+.touch-stats-line {
+  display: none;
+}
+@media (hover: none) and (pointer: coarse) {
+  .av-player--touch .touch-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 8px;
+    padding: 42px 8px 6px;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: none;
+  }
+  .av-player--touch .touch-footer {
+    display: contents;
+  }
+
+  /* Page frame: nav and site footer give their space to the game */
+  .av-gamepad body {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  .av-gamepad .av-nav,
+  .av-gamepad .av-mobile-panel,
+  .av-gamepad .av-mobile-backdrop,
+  .av-gamepad body > footer {
+    display: none !important;
+  }
+  /* Same thing from :has so there is no flash before the shell adds .av-gamepad */
+  body:has(.av-player--touch) .av-nav,
+  body:has(.av-player--touch) > footer {
+    display: none;
+  }
+
+  /* Rows: stats strip / CRT (takes the free height) / pad / pause + skin.
+     HUD wrappers dissolve so stats, CRT and footer items are grid cells of .av-player */
+  .av-player.av-player--touch {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    --footer-row: 4;
+    --pad-dir: clamp(44px, 13vw, 54px);
+    --pad-act: clamp(54px, 17vw, 70px);
+    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    gap: 6px;
+    height: 100dvh;
+    max-width: none;
+    margin: 0;
+    padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
+    overflow: hidden;
+  }
+  .av-player--touch .player-hud,
+  .av-player--touch .hud-stats {
+    display: contents;
+  }
+  .av-player--touch .hud-actions,
+  .av-player--touch .hud-player,
+  .av-player--touch .crt-bottom {
+    display: none;
+  }
+  /* Stats strip (score, lives, level...) takes screen height the game needs: hidden on touch */
+  .av-player--touch .hud-stats > .hud-stat {
+    display: none;
+  }
+  .av-player--touch .hud-stat .l {
+    font-size: 8px;
+  }
+
+  /* CRT: 4:3 screens fill the width and the CRT hugs them (the pad takes the free height) */
+  .av-player--touch .crt {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-height: 0;
+    padding: 8px;
+    border-radius: 18px;
+    box-shadow:
+      0 0 0 3px #1b1b22,
+      0 0 0 4px #2a2a35,
+      0 10px 30px -10px rgba(0, 245, 255, 0.35);
+  }
+  .av-player--touch .crt-screen {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+  }
+  /* Tetris is a tall board: its CRT takes the free height and the screen fills it (cq units of .crt) */
+  .av-player--touch:has(.tetris-stage) {
+    --footer-row: 3;
+    grid-template-rows: minmax(0, 1fr) auto auto;
+  }
+  .av-player--touch:has(.tetris-stage) .crt {
+    container-type: size;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .av-player--touch .crt-screen:has(.tetris-stage) {
+    flex: none;
+    width: 100cqw;
+    height: 100cqh;
+    aspect-ratio: auto;
+  }
+  /* Stats panel in the free strip left of the Tetris board (mirrors the "next" panel on the right) */
+  .av-player--touch .touch-stats {
+    position: absolute;
+    top: 3cqh;
+    left: 1cqw;
+    width: 17cqw;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .av-player--touch .touch-stats .hud-stat {
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .av-player--touch .touch-stats .l {
+    font-size: 7px;
+    letter-spacing: 0.08em;
+  }
+  .av-player--touch .touch-stats .v {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  /* On tall phones the board would grow into both side panels: cap its width so they always fit */
+  .av-player--touch .tetris-board {
+    height: min(94cqh, 120cqw);
+  }
+  /* One thin stats line under a 4:3 screen (inside the CRT frame, where crt-bottom used to be) */
+  .av-player--touch .touch-stats-line {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin-top: 8px;
+  }
+  .av-player--touch .touch-stats-line .hud-stat {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .av-player--touch .touch-stats-line .v {
+    font-size: 12px;
+  }
+  /* Keyboard hint under the page makes no sense on touch */
+  body:has(.av-player--touch) .tetris-below {
+    display: none;
+  }
+
+  .av-player--touch .touch-controls {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .av-player--touch .touch-pause,
+  .av-player--touch .touch-back {
+    grid-row: var(--footer-row);
+    align-self: end;
+    min-width: 0;
+    padding: 12px 4px;
+    font-size: 9px;
+    letter-spacing: 0.08em;
+  }
+  .av-player--touch .touch-pause {
+    grid-column: 1;
+  }
+  .av-player--touch .touch-back {
+    grid-column: 2;
+  }
+  .av-player--touch .hud-extra > .hud-stat {
+    grid-column: 3 / -1;
+    grid-row: var(--footer-row);
+    align-self: end;
+    align-items: stretch;
+    min-width: 0;
+  }
+  .av-player--touch .hud-extra .skin-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Landscape: notice covers everything (the shell pauses the game) */
+  @media (orientation: landscape) {
+    .av-player--touch .touch-rotate {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 24px;
+      text-align: center;
+      background: var(--bg);
+    }
+    .touch-rotate-icon {
+      font-size: 40px;
+      color: var(--cyan);
+      text-shadow: 0 0 12px rgba(0, 245, 255, 0.7);
+    }
+    .touch-rotate-title {
+      font-family: var(--pixel);
+      font-size: 14px;
+      color: var(--yellow);
+      letter-spacing: 0.1em;
+    }
+    .touch-rotate-text {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink-dim);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+  }
+
+  /* Game-over modal: the save row and the actions stack so nothing leaves the box */
+  .av-player--touch .modal {
+    width: 100%;
+    max-width: 480px;
+    min-width: 0;
+    padding: 24px 16px;
+  }
+  .av-player--touch .modal h2 {
+    font-size: 16px;
+  }
+  .av-player--touch .modal .final {
+    font-size: 28px;
+  }
+  .av-player--touch .modal .input-row {
+    flex-direction: column;
+  }
+  .av-player--touch .modal .input-row input {
+    flex: none;
+    width: 100%;
+    min-width: 0;
+  }
+  .av-player--touch .modal .btn {
+    width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+  .av-player--touch .modal .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .touch-dpad {
+    display: grid;
+    grid-template-columns: repeat(3, auto);
+  }
+  .touch-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 3px;
+    padding: 0;
+    font-family: var(--pixel);
+    color: var(--cyan);
+    background: rgba(0, 245, 255, 0.06);
+    border: 2px solid var(--cyan);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow:
+      0 0 8px rgba(0, 245, 255, 0.35),
+      inset 0 0 8px rgba(0, 245, 255, 0.15);
+    transition:
+      transform 60ms ease,
+      background 60ms ease,
+      box-shadow 60ms ease;
+  }
+  .touch-btn:disabled {
+    opacity: 0.4;
+  }
+  .touch-btn.is-inactive {
+    opacity: 0.22;
+    box-shadow: none;
+  }
+  .touch-btn.is-pressed {
+    transform: scale(0.93);
+    background: rgba(0, 245, 255, 0.28);
+    box-shadow:
+      0 0 16px rgba(0, 245, 255, 0.7),
+      inset 0 0 12px rgba(0, 245, 255, 0.4);
+  }
+  .touch-dir {
+    width: calc(var(--pad-dir) - 2px);
+    height: calc(var(--pad-dir) - 2px);
+    font-size: 18px;
+    border-radius: 12px;
+  }
+  .touch-dir-up {
+    grid-area: 1 / 2;
+  }
+  .touch-dir-left {
+    grid-area: 2 / 1;
+  }
+  .touch-dir-right {
+    grid-area: 2 / 3;
+  }
+  .touch-dir-down {
+    grid-area: 3 / 2;
+  }
+
+  .touch-actions {
+    display: flex;
+    gap: 14px;
+  }
+  .touch-action {
+    width: var(--pad-act);
+    height: var(--pad-act);
+    font-size: 16px;
+    border-radius: 50%;
+  }
+  .touch-action-a {
+    color: var(--magenta);
+    border-color: var(--magenta);
+    box-shadow:
+      0 0 8px rgba(255, 0, 110, 0.35),
+      inset 0 0 8px rgba(255, 0, 110, 0.15);
+  }
+  .touch-action-a.is-pressed {
+    background: rgba(255, 0, 110, 0.28);
+    box-shadow:
+      0 0 16px rgba(255, 0, 110, 0.7),
+      inset 0 0 12px rgba(255, 0, 110, 0.4);
+  }
+  .touch-action-b {
+    margin-top: calc(var(--pad-act) * 0.4);
+    color: var(--yellow);
+    border-color: var(--yellow);
+    box-shadow:
+      0 0 8px rgba(245, 255, 0, 0.35),
+      inset 0 0 8px rgba(245, 255, 0, 0.15);
+  }
+  .touch-action-b.is-pressed {
+    background: rgba(245, 255, 0, 0.25);
+    box-shadow:
+      0 0 16px rgba(245, 255, 0, 0.7),
+      inset 0 0 12px rgba(245, 255, 0, 0.4);
+  }
+}
 
 .crt {
   position: relative;

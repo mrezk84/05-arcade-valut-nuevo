@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useState, useCallback } from 'react';
 import GamePlayShell from '@/components/games/GamePlayShell';
+import type { TouchControlsConfig } from '@/components/games/TouchControls';
 import { START_LENGTH } from '@/components/games/snake/constants';
 import SkinSelect from '@/components/games/skins/SkinSelect';
 import { useGameSkin } from '@/components/games/skins/useGameSkin';
@@ -16,6 +17,11 @@ import {
 const SnakeGame = dynamic(() => import('@/components/games/SnakeGame'), {
   ssr: false,
 });
+
+const TOUCH: TouchControlsConfig = {
+  dpad: ['left', 'right', 'up', 'down'],
+  statsLine: ['Puntuación'],
+};
 
 export default function SnakePlay() {
   const [score, setScore] = useState(0);
@@ -48,6 +54,7 @@ export default function SnakePlay() {
       <GamePlayShell
         gameId="snake"
         title="SNAKE"
+        touch={TOUCH}
         stats={[
           { label: 'Puntuación', value: score.toLocaleString('es-ES') },
           { label: 'Longitud', value: String(length) },

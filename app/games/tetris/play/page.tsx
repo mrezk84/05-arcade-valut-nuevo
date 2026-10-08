@@ -3,12 +3,23 @@
 import dynamic from 'next/dynamic';
 import { useState, useCallback } from 'react';
 import GamePlayShell from '@/components/games/GamePlayShell';
+import type { TouchControlsConfig } from '@/components/games/TouchControls';
 import { SKINS, SKIN_IDS, type SkinId } from '@/components/games/tetris/skins';
 import { useSkin } from '@/components/games/tetris/useSkin';
 
 const TetrisGame = dynamic(() => import('@/components/games/TetrisGame'), {
   ssr: false,
 });
+
+const TOUCH: TouchControlsConfig = {
+  dpad: ['left', 'right', 'up', 'down'],
+  repeat: ['left', 'right', 'down'],
+  statsPanel: ['Puntuación', 'Líneas', 'Nivel'],
+  buttons: [
+    { label: 'A', key: 'ArrowUp', ariaLabel: 'Rotar' },
+    { label: 'B', key: 'Space', ariaLabel: 'Caída rápida' },
+  ],
+};
 
 export default function TetrisPlay() {
   const [score, setScore] = useState(0);
@@ -49,6 +60,7 @@ export default function TetrisPlay() {
       <GamePlayShell
         gameId="tetris"
         title="TETRIS"
+        touch={TOUCH}
         stats={[
           { label: 'Puntuación', value: score.toLocaleString('es-ES') },
           { label: 'Líneas', value: String(lines) },

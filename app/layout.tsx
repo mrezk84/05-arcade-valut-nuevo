@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Press_Start_2P, JetBrains_Mono, Courier_Prime } from "next/font/google";
 import "./globals.css";
 import { UserProvider } from "./context/UserContext";
@@ -11,6 +11,11 @@ const courier = Courier_Prime({ weight: ["400", "700"], subsets: ["latin"], vari
 export const metadata: Metadata = {
   title: "Arcade Vault",
   description: "Online gaming platform — play and compete for points",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({

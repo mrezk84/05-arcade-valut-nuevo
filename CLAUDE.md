@@ -93,6 +93,7 @@ Uses Next.js **App Router** exclusively — no `pages/` directory.
 ### Games (`components/games/`)
 
 - `GamePlayShell.tsx` — common shell for every play-page: HUD (stats), pause, force end, restart, game-over modal that saves the score to `scores` (clamped to 0–10 000 000), and **redirects to `/games/<id>` (leaderboard) after saving**. Games do not implement their own game-over, pause overlay or local leaderboard.
+- `TouchControls.tsx` — virtual gamepad (d-pad + up to 2 buttons A/B) for touch devices (SPEC 10). Each play-page passes a `touch` config (`TouchControlsConfig`) to `GamePlayShell`; the pad dispatches synthetic `KeyboardEvent`s on `window`, so games need no touch code. The mobile layout (hidden nav, pause/back/skin footer, portrait-only) only applies under `(hover: none) and (pointer: coarse)` and only when `touch` is set.
 - `<Name>Game.tsx` — canvas component (`AsteroidsGame`, `TetrisGame`, `ArkanoidGame`, `SnakeGame`). It receives `paused` from the shell and reports state through callbacks (`onScoreChange`, `onGameOver(score)`, etc.).
 - Per-game helper modules in subfolders: `tetris/` (board, pieces, draw, skins, `useSkin` — 4 skins persisted in localStorage), `arkanoid/` (levels, sprites), `snake/` (constants, sprites).
 - Skins: games that have them follow the contract in `.claude/agents/skin-designer.md` (`components/games/<id>/skins.ts`, ids `classic|neon|retro` + extras, `<id>-skin` in localStorage). Which games have them: `references/game-with-themes.md`.
