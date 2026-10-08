@@ -60,6 +60,8 @@ Typical flow to add a game: `game-planner` → `/add-game <ref>` → review spec
 - `game-jam` (`.claude/agents/game-jam.md`) — given a theme, designs one game and writes at least two complete specs (`01-<id>-game.md` playable integration + `02-<id>-<extension>.md`) in `specs/game-jam/<game-id>/`, in `Borrador` state and in the same format as specs 07–09. Its only write target is that folder. Flow: `@game-jam <tema>` → review `specs/game-jam/<id>/` → `/spec-impl specs/game-jam/<id>/01-<id>-game.md`.
 - `skin-designer` (`.claude/agents/skin-designer.md`) — works on **one game per invocation** (`@skin-designer <game-id>`): leaves it with at least the skins `classic` (default), `neon` and `retro`, all checked for dark mode (WCAG contrast), and implements the code (`components/games/<id>/skins.ts`, skin selector in the play-page). Never touches games it was not asked for. Its memory is `references/game-with-themes.md` (which games have skins and their dark-mode status); it only updates the row of the game it worked on.
 
+- `mobile-porter` (`.claude/agents/mobile-porter.md`) — works on **one game per invocation** (`@mobile-porter <game-id>`): ports it to mobile following SPEC 10 (`touch` config in its play-page, mobile layout, landscape) without changing desktop. Never touches the game logic, `TouchControls.tsx` or `GamePlayShell.tsx`. Its memory is `references/game-mobile-status.md`; it only updates the row of the game it worked on.
+
 ## Architecture
 
 Uses Next.js **App Router** exclusively — no `pages/` directory.

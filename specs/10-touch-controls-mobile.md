@@ -1,6 +1,6 @@
 # SPEC 10 — Controles táctiles para móvil
 
-> **Estado:** Aprobado · **Depende de:** SPEC 05, SPEC 07, SPEC 08, SPEC 09 · **Fecha:** 2026-10-08
+> **Estado:** Implementado · **Depende de:** SPEC 05, SPEC 07, SPEC 08, SPEC 09 · **Fecha:** 2026-10-08
 > **Objetivo:** Permitir jugar Asteroids, Tetris, Arkanoid y Snake en un móvil, con el canvas arriba y un mando virtual (cruceta y hasta 2 botones) debajo, visible solo en dispositivos táctiles.
 
 > **Nota de verificación:** los criterios se comprobaron con un móvil emulado (Chromium con táctil y `pointer: coarse`, 360×640 a 412×915). Falta confirmarlos en un móvil real antes de pasar a `Implementado`.

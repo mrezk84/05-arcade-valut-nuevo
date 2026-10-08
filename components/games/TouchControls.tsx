@@ -47,11 +47,12 @@ const DIR_KEY: Record<DpadDir, TouchKey> = {
   down: 'ArrowDown',
 };
 
-const DIR_GLYPH: Record<DpadDir, string> = {
-  left: '◀',
-  right: '▶',
-  up: '▲',
-  down: '▼',
+// Triangles of the Gamepad MK-II reference (24×24 viewBox)
+const DIR_ARROW: Record<DpadDir, string> = {
+  up: 'M12 4 L20 16 L4 16 Z',
+  right: 'M8 4 L20 12 L8 20 Z',
+  down: 'M4 8 L20 8 L12 20 Z',
+  left: 'M16 4 L16 20 L4 12 Z',
 };
 
 const DIR_LABEL: Record<DpadDir, string> = {
@@ -268,10 +269,21 @@ export default function TouchControls({
               onMove={handleMove}
               onRelease={handleRelease}
             >
-              {DIR_GLYPH[dir]}
+              <svg
+                className="touch-dir-arrow"
+                viewBox="0 0 24 24"
+                width="22"
+                height="22"
+                aria-hidden="true"
+              >
+                <path d={DIR_ARROW[dir]} fill="currentColor" />
+              </svg>
             </PadButton>
           );
         })}
+        <span className="touch-hub" aria-hidden="true">
+          <span className="touch-hub-gem" />
+        </span>
       </div>
       {actions.length > 0 && (
         <div className="touch-actions">
@@ -287,7 +299,8 @@ export default function TouchControls({
               onMove={handleMove}
               onRelease={handleRelease}
             >
-              {label}
+              <span className="touch-action-ring" aria-hidden="true" />
+              <span className="touch-action-letter">{label}</span>
             </PadButton>
           ))}
         </div>
