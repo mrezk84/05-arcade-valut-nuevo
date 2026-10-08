@@ -29,6 +29,7 @@ export interface TouchControlsConfig {
 interface TouchControlsProps {
   config: TouchControlsConfig;
   disabled: boolean;
+  footer?: React.ReactNode; // row inside the pad shell (pause, skin select, exit)
 }
 
 // Games read e.code (Asteroids, Tetris) or e.key (Arkanoid), so both are always sent
@@ -133,6 +134,7 @@ function PadButton({
 export default function TouchControls({
   config,
   disabled,
+  footer,
 }: TouchControlsProps) {
   const holdsRef = useRef(new Map<number, Hold>());
   const [pressed, setPressed] = useState<ReadonlySet<string>>(new Set());
@@ -305,6 +307,7 @@ export default function TouchControls({
           ))}
         </div>
       )}
+      {footer && <div className="touch-pad-footer">{footer}</div>}
     </div>
   );
 }

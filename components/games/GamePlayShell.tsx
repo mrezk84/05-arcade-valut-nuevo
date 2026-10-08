@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useSyncExternalStore } from 'react';
 import { useUser } from '@/app/context/UserContext';
 import { createClient } from '@/lib/supabase/client';
 import TouchControls, {
@@ -11,6 +11,16 @@ import TouchControls, {
 
 const MAX_SCORE = 10_000_000;
 const REDIRECT_DELAY = 1200; // ms, para que se vea "PUNTUACIÓN GUARDADA"
+
+const COARSE_QUERY = '(hover: none) and (pointer: coarse)';
+
+function subscribeCoarse(onChange: () => void) {
+  const mq = window.matchMedia(COARSE_QUERY);
+  mq.addEventListener('change', onChange);
+  return () => mq.removeEventListener('change', onChange);
+}
+const getCoarse = () => window.matchMedia(COARSE_QUERY).matches;
+const getCoarseServer = () => false;
 
 interface GamePlayShellProps {
   gameId: string;
@@ -61,6 +71,13 @@ export default function GamePlayShell({
     latest.current = { paused, over, onTogglePause };
   });
   const hasTouch = !!touch;
+  // On touch devices the skin select lives in the pad footer, so it is rendered only once
+  const coarse = useSyncExternalStore(
+    subscribeCoarse,
+    getCoarse,
+    getCoarseServer,
+  );
+  const padUi = hasTouch && coarse;
   useEffect(() => {
     if (!hasTouch) return;
     const mq = window.matchMedia(
@@ -129,7 +146,7 @@ export default function GamePlayShell({
               <div className="v">{s.value}</div>
             </div>
           ))}
-          {hudExtra && <div className="hud-extra">{hudExtra}</div>}
+          {hudExtra && !padUi && <div className="hud-extra">{hudExtra}</div>}
         </div>
         <div className="hud-actions">
           <button className="btn yellow" onClick={onTogglePause}>
@@ -219,19 +236,29 @@ export default function GamePlayShell({
               Este juego se juega en vertical
             </div>
           </div>
-          <TouchControls config={touch} disabled={paused || over} />
-          <div className="touch-footer">
-            <button
-              className="btn yellow touch-pause"
-              onClick={onTogglePause}
-              disabled={over}
-            >
-              {paused ? 'REANUDAR' : 'PAUSA'}
-            </button>
-            <Link href={`/games/${gameId}`} className="btn ghost touch-back">
-              REGRESAR
-            </Link>
-          </div>
+          <TouchControls
+            config={touch}
+            disabled={paused || over}
+            footer={
+              <>
+                <button
+                  type="button"
+                  className="btn yellow touch-pad-btn touch-pad-pause"
+                  onClick={onTogglePause}
+                  disabled={over}
+                >
+                  {paused ? 'REANUDAR' : 'PAUSA'}
+                </button>
+                {padUi && hudExtra}
+                <Link
+                  href={`/games/${gameId}`}
+                  className="btn ghost touch-pad-btn touch-pad-exit"
+                >
+                  SALIR
+                </Link>
+              </>
+            }
+          />
         </>
       )}
 
