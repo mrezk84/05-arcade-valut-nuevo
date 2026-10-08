@@ -1039,7 +1039,6 @@ a {
 
 /* ===== touch controls (mobile only, see SPEC 10) ===== */
 .touch-controls,
-.touch-footer,
 .touch-rotate,
 .touch-stats,
 .touch-stats-line {
@@ -1050,11 +1049,12 @@ a {
     display: flex;
     align-items: center;
     justify-content: space-around;
+    flex-wrap: wrap;
     gap: 8px;
     /* Gamepad MK-II shell (SPEC 11). margin-top + padding keep the ~50px gap above the ↑ key */
     position: relative;
     margin-top: 28px;
-    padding: 14px 16px 12px;
+    padding: 14px 10px 12px;
     background: linear-gradient(180deg, #1c1c28 0%, #0c0c14 100%);
     border: 1px solid var(--line);
     border-radius: 18px;
@@ -1090,9 +1090,6 @@ a {
     background-size: 8px 8px;
     opacity: 0.6;
   }
-  .av-player--touch .touch-footer {
-    display: contents;
-  }
 
   /* Page frame: nav and site footer give their space to the game */
   .av-gamepad body {
@@ -1116,10 +1113,9 @@ a {
   .av-player.av-player--touch {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    --footer-row: 4;
     --pad-dir: clamp(44px, 13vw, 54px);
     --pad-act: clamp(54px, 17vw, 70px);
-    grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-rows: auto auto minmax(0, 1fr);
     gap: 6px;
     height: 100dvh;
     max-width: none;
@@ -1162,8 +1158,7 @@ a {
   }
   /* Tetris is a tall board: its CRT takes the free height and the screen fills it (cq units of .crt) */
   .av-player--touch:has(.tetris-stage) {
-    --footer-row: 3;
-    grid-template-rows: minmax(0, 1fr) auto auto;
+    grid-template-rows: minmax(0, 1fr) auto;
   }
   .av-player--touch:has(.tetris-stage) .crt {
     container-type: size;
@@ -1229,31 +1224,45 @@ a {
     grid-column: 1 / -1;
     grid-row: 2;
   }
-  .av-player--touch .touch-pause,
-  .av-player--touch .touch-back {
-    grid-row: var(--footer-row);
-    align-self: end;
+  /* Pause / skin select / exit live inside the pad shell (see .touch-pad-footer).
+     Until hydration moves the select there, the HUD copy stays out of the grid */
+  .av-player--touch .hud-extra {
+    display: none;
+  }
+  .av-player--touch .touch-pad-footer {
+    position: relative;
+    z-index: 1;
+    flex: 0 0 100%;
+    display: flex;
+    align-items: stretch;
+    gap: 6px;
+  }
+  /* Same buttons as the old footer (.btn yellow / .btn ghost), sized for the pad */
+  .touch-pad-btn {
+    flex: none;
     min-width: 0;
-    padding: 12px 4px;
+    padding: 12px 10px;
     font-size: 9px;
     letter-spacing: 0.08em;
   }
-  .av-player--touch .touch-pause {
-    grid-column: 1;
+  .touch-pad-pause {
   }
-  .av-player--touch .touch-back {
-    grid-column: 2;
-  }
-  .av-player--touch .hud-extra > .hud-stat {
-    grid-column: 3 / -1;
-    grid-row: var(--footer-row);
-    align-self: end;
-    align-items: stretch;
+  .touch-pad-footer .hud-stat {
+    flex: 1 1 0;
     min-width: 0;
+    align-items: stretch;
   }
-  .av-player--touch .hud-extra .skin-select {
+  .touch-pad-footer .hud-stat .l {
+    display: none;
+  }
+  .touch-pad-footer .skin-select,
+  .touch-pad-footer .tetris-skin-select {
     width: 100%;
     min-width: 0;
+    height: 100%;
+    font-size: 9px;
+    padding: 0 4px;
+    border-radius: 0;
   }
 
   /* Landscape: notice covers everything (the shell pauses the game) */
@@ -1446,7 +1455,7 @@ a {
     z-index: 1;
     display: flex;
     align-items: center;
-    gap: 22px;
+    gap: 18px;
   }
   .touch-action {
     position: relative;
