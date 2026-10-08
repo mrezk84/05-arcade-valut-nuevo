@@ -1039,7 +1039,8 @@ a {
 
 /* ===== touch controls (mobile only, see SPEC 10) ===== */
 .touch-controls,
-.touch-footer {
+.touch-footer,
+.touch-rotate {
   display: none;
 }
 @media (hover: none) and (pointer: coarse) {
@@ -1153,6 +1154,41 @@ a {
     align-items: center;
     justify-content: center;
     gap: 8px;
+  }
+
+  /* Landscape: notice covers everything (the shell pauses the game) */
+  @media (orientation: landscape) {
+    .av-player--touch .touch-rotate {
+      position: fixed;
+      inset: 0;
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 24px;
+      text-align: center;
+      background: var(--bg);
+    }
+    .touch-rotate-icon {
+      font-size: 40px;
+      color: var(--cyan);
+      text-shadow: 0 0 12px rgba(0, 245, 255, 0.7);
+    }
+    .touch-rotate-title {
+      font-family: var(--pixel);
+      font-size: 14px;
+      color: var(--yellow);
+      letter-spacing: 0.1em;
+    }
+    .touch-rotate-text {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--ink-dim);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
   }
 
   .touch-dpad {

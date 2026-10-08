@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@/app/context/UserContext';
 import { createClient } from '@/lib/supabase/client';
 import TouchControls, {
@@ -54,6 +54,26 @@ export default function GamePlayShell({
       if (stored) setName(stored);
     }
   }, [over]);
+
+  // Touch layout is portrait-only: entering landscape pauses the game (the notice is CSS)
+  const latest = useRef({ paused, over, onTogglePause });
+  useEffect(() => {
+    latest.current = { paused, over, onTogglePause };
+  });
+  const hasTouch = !!touch;
+  useEffect(() => {
+    if (!hasTouch) return;
+    const mq = window.matchMedia(
+      '(orientation: landscape) and (hover: none) and (pointer: coarse)',
+    );
+    const pauseIfLandscape = () => {
+      const { paused, over, onTogglePause } = latest.current;
+      if (mq.matches && !paused && !over) onTogglePause();
+    };
+    pauseIfLandscape();
+    mq.addEventListener('change', pauseIfLandscape);
+    return () => mq.removeEventListener('change', pauseIfLandscape);
+  }, [hasTouch]);
 
   // Tras guardar, lleva al leaderboard del juego.
   useEffect(() => {
@@ -160,6 +180,15 @@ export default function GamePlayShell({
 
       {touch && (
         <>
+          <div className="touch-rotate" role="alert">
+            <div className="touch-rotate-icon" aria-hidden="true">
+              ⟳
+            </div>
+            <div className="touch-rotate-title">GIRA EL DISPOSITIVO</div>
+            <div className="touch-rotate-text">
+              Este juego se juega en vertical
+            </div>
+          </div>
           <TouchControls config={touch} disabled={paused || over} />
           <div className="touch-footer">
             <button
