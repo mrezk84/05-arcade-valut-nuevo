@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useState, useCallback } from 'react';
 import GamePlayShell from '@/components/games/GamePlayShell';
+import type { TouchControlsConfig } from '@/components/games/TouchControls';
 import SkinSelect from '@/components/games/skins/SkinSelect';
 import { useGameSkin } from '@/components/games/skins/useGameSkin';
 import {
@@ -16,6 +17,14 @@ const AsteroidsGame = dynamic(
   () => import('@/components/games/AsteroidsGame'),
   { ssr: false },
 );
+
+const TOUCH: TouchControlsConfig = {
+  dpad: ['left', 'right'],
+  buttons: [
+    { label: 'A', key: 'Space', ariaLabel: 'Disparar' },
+    { label: 'B', key: 'ArrowUp', ariaLabel: 'Impulso' },
+  ],
+};
 
 export default function AsteroidsPlay() {
   const [score, setScore] = useState(0);
@@ -47,6 +56,7 @@ export default function AsteroidsPlay() {
     <GamePlayShell
       gameId="asteroids"
       title="ASTEROIDS"
+      touch={TOUCH}
       stats={[
         { label: 'Puntuación', value: score.toLocaleString('es-ES') },
         {
