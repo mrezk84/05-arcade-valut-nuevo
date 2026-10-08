@@ -19,7 +19,7 @@ const AsteroidsGame = dynamic(
 );
 
 const TOUCH: TouchControlsConfig = {
-  dpad: ['left', 'right'],
+  dpad: ['left', 'right', 'up', 'down'],
   buttons: [
     { label: 'A', key: 'Space', ariaLabel: 'Disparar' },
     { label: 'B', key: 'ArrowUp', ariaLabel: 'Impulso' },

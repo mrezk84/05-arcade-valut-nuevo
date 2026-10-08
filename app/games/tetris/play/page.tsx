@@ -12,7 +12,7 @@ const TetrisGame = dynamic(() => import('@/components/games/TetrisGame'), {
 });
 
 const TOUCH: TouchControlsConfig = {
-  dpad: ['left', 'right', 'down'],
+  dpad: ['left', 'right', 'up', 'down'],
   repeat: ['left', 'right', 'down'],
   buttons: [
     { label: 'A', key: 'ArrowUp', ariaLabel: 'Rotar' },

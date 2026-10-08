@@ -75,6 +75,13 @@ export default function GamePlayShell({
     return () => mq.removeEventListener('change', pauseIfLandscape);
   }, [hasTouch]);
 
+  // Gamepad layout owns the whole screen: the site chrome (nav, footer) hides via this class
+  useEffect(() => {
+    if (!hasTouch) return;
+    document.documentElement.classList.add('av-gamepad');
+    return () => document.documentElement.classList.remove('av-gamepad');
+  }, [hasTouch]);
+
   // Tras guardar, lleva al leaderboard del juego.
   useEffect(() => {
     if (!saved) return;
@@ -198,6 +205,9 @@ export default function GamePlayShell({
             >
               {paused ? 'REANUDAR' : 'PAUSA'}
             </button>
+            <Link href={`/games/${gameId}`} className="btn ghost touch-back">
+              REGRESAR
+            </Link>
           </div>
         </>
       )}

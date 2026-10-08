@@ -3,6 +3,7 @@
 import dynamic from 'next/dynamic';
 import { useState, useCallback } from 'react';
 import GamePlayShell from '@/components/games/GamePlayShell';
+import type { TouchControlsConfig } from '@/components/games/TouchControls';
 import SkinSelect from '@/components/games/skins/SkinSelect';
 import { useGameSkin } from '@/components/games/skins/useGameSkin';
 import {
@@ -15,6 +16,10 @@ import {
 const ArkanoidGame = dynamic(() => import('@/components/games/ArkanoidGame'), {
   ssr: false,
 });
+
+const TOUCH: TouchControlsConfig = {
+  dpad: ['left', 'right'],
+};
 
 export default function ArkanoidPlay() {
   const [score, setScore] = useState(0);
@@ -47,6 +52,7 @@ export default function ArkanoidPlay() {
       <GamePlayShell
         gameId="arkanoid"
         title="ARKANOID"
+        touch={TOUCH}
         stats={[
           { label: 'Puntuación', value: score.toLocaleString('es-ES') },
           {

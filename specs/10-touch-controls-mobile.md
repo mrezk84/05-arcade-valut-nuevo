@@ -14,14 +14,14 @@
 - Componente `components/games/TouchControls.tsx`: cruceta de 4 direcciones y hasta 2 botones de acción (A y B), con feedback visual al pulsar.
 - El mando no toca la lógica de los juegos: dispara `KeyboardEvent` sintéticos en `window` (`keydown`/`keyup`, con `key` y `code`) con las mismas teclas que el teclado. Mientras un control se mantiene pulsado, emite repeticiones cada ~100 ms (auto-repeat, que Tetris necesita). Al soltarlo, al pausar y al desmontar emite `keyup`.
 - Mapeo por juego, declarado en cada play-page:
-  - Asteroids: ← → rotar · A = disparar (`Space`) · B = empuje (`ArrowUp`).
-  - Tetris: ← → ↓ · A = rotar (`ArrowUp`) · B = caída rápida (`Space`).
+  - Asteroids: ← → rotar · ↑ empuje (igual que B) · ↓ sin efecto en el juego · A = disparar (`Space`) · B = empuje (`ArrowUp`).
+  - Tetris: ← → ↓ · ↑ rotar (igual que A) · A = rotar (`ArrowUp`) · B = caída rápida (`Space`).
   - Arkanoid: ← → mueven el paddle. Sin botones A/B.
   - Snake: ← ↑ → ↓. Sin botones A/B.
 - Los botones sin uso no se muestran. La cruceta se adapta al juego (por ejemplo, Arkanoid solo necesita ← →).
 - Layout móvil de `/games/<id>/play`, solo con `@media (hover: none) and (pointer: coarse)`:
-  - De arriba abajo: HUD compacto con las stats del propio juego en una sola franja, canvas escalado al espacio disponible manteniendo su proporción, mando virtual y, al pie, PAUSA/REANUDAR y el selector de skins (cuando el juego lo tiene).
-  - Se ocultan el Nav, el footer del sitio, el bloque JUGADOR, los botones FIN y SALIR y la barra `crt-bottom` del CRT.
+  - De arriba abajo: HUD compacto con las stats del propio juego en una sola franja, canvas escalado al espacio disponible manteniendo su proporción, mando virtual y, al pie, en una sola fila, PAUSA/REANUDAR, REGRESAR (enlace a `/games/<id>`) y el selector de skins (cuando el juego lo tiene). Hay unos 30 px de separación entre la pantalla y la flecha ↑ de la cruceta.
+  - Se ocultan por completo el Nav (incluido su menú móvil), el footer del sitio, el bloque JUGADOR, los botones FIN y SALIR y la barra `crt-bottom` del CRT. El shell marca `<html>` con la clase `av-gamepad` mientras el mando está montado, y el CSS oculta el chrome del sitio con ella.
 - Solo portrait. En landscape se muestra un aviso "gira el dispositivo" en lugar del juego, y el juego se pausa.
 - `viewport` explícito en `app/layout.tsx` (`width=device-width`, `initial-scale=1`), y los controles evitan zoom, scroll y menú contextual al tocar (`touch-action: none`, `user-select: none`).
 - Los 4 juegos a la vez, con el mismo componente y el mismo CSS.
@@ -98,8 +98,8 @@ Los eventos llevan siempre `key` y `code`, porque Asteroids y Tetris leen `e.cod
 
 | Juego     | `dpad`                        | `repeat`                | `buttons`                                      |
 | --------- | ----------------------------- | ----------------------- | ---------------------------------------------- |
-| Asteroids | `left`, `right`               | —                       | A `Space` (Disparar) · B `ArrowUp` (Impulso)   |
-| Tetris    | `left`, `right`, `down`       | `left`, `right`, `down` | A `ArrowUp` (Rotar) · B `Space` (Caída rápida) |
+| Asteroids | `left`, `right`, `up`, `down` | —                       | A `Space` (Disparar) · B `ArrowUp` (Impulso)   |
+| Tetris    | `left`, `right`, `up`, `down` | `left`, `right`, `down` | A `ArrowUp` (Rotar) · B `Space` (Caída rápida) |
 | Arkanoid  | `left`, `right`               | —                       | —                                              |
 | Snake     | `left`, `right`, `up`, `down` | —                       | —                                              |
 
@@ -131,13 +131,14 @@ Reglas de emisión:
 
 - [ ] En un dispositivo con `(hover: none) and (pointer: coarse)`, las 4 play-pages muestran el canvas arriba y el mando virtual debajo.
 - [ ] En escritorio (ratón), las 4 play-pages se ven y funcionan exactamente igual que antes.
-- [ ] Asteroids: ← → rotan la nave, A dispara, B da empuje, y se pueden mantener A y ← a la vez con dos dedos.
-- [ ] Tetris: ← → ↓ mueven la pieza y repiten al mantener pulsado, A rota, B hace caída rápida sin repetirse.
+- [ ] Asteroids: ← → rotan la nave, ↑ y B dan empuje, ↓ no hace nada, A dispara, y se pueden mantener A y ← a la vez con dos dedos.
+- [ ] Tetris: ← → ↓ mueven la pieza y repiten al mantener pulsado, ↑ y A rotan sin repetirse, B hace caída rápida sin repetirse.
 - [ ] Arkanoid: ← → mueven el paddle mientras se mantienen pulsados y no hay botones A/B visibles.
 - [ ] Snake: las 4 direcciones giran la serpiente, y no hay botones A/B visibles.
 - [ ] Soltar el dedo, o sacarlo del control, detiene el movimiento: no quedan teclas "pegadas".
 - [ ] Al pausar o al terminar la partida, el mando no envía teclas al juego.
-- [ ] En móvil se ocultan Nav, footer, JUGADOR, FIN, SALIR y `crt-bottom`; se ven las stats del juego, PAUSA/REANUDAR y, si el juego lo tiene, el selector de skins debajo del mando.
+- [ ] En móvil se ocultan por completo Nav (y su menú), footer, JUGADOR, FIN, SALIR y `crt-bottom`; se ven las stats del juego y, debajo del mando, PAUSA/REANUDAR, REGRESAR y, si el juego lo tiene, el selector de skins.
+- [ ] REGRESAR lleva a `/games/<id>`.
 - [ ] El canvas no se corta ni desborda en un móvil de ~360×640 CSS px en portrait, y mantiene su proporción.
 - [ ] En landscape se muestra el aviso y el juego queda pausado.
 - [ ] Tocar los controles no hace zoom, scroll ni abre el menú contextual.
@@ -155,7 +156,7 @@ Reglas de emisión:
 - **Hasta 2 botones de acción.** La mayoría de los arcade necesitan 2 como máximo. Los juegos futuros declaran su mapeo en su propia spec.
 - **Detección por `@media (hover: none) and (pointer: coarse)`.** Un portátil con ratón nunca ve el mando. Descartado: detección por ancho (`max-width`), que lo activaría al achicar una ventana de escritorio.
 - **Solo portrait, con aviso y pausa automática en landscape.** Descartado: soportar landscape (fuera de alcance).
-- **Ocultar Nav, footer, JUGADOR, FIN y SALIR en móvil.** Prioriza espacio de pantalla. Salir a mitad de partida solo es posible con el botón atrás del navegador, y el modal de fin de partida ofrece los enlaces.
+- **Ocultar Nav, footer, JUGADOR, FIN y SALIR en móvil.** Prioriza espacio de pantalla. Para salir a mitad de partida hay un botón REGRESAR en el pie, junto a PAUSA y al selector de skins (añadido tras probar el layout).
 - **`repeat` explícito por dirección y no global.** Solo Tetris lo necesita. En Snake una repetición de la misma dirección llenaría la cola de giros.
 - **Los botones sin uso se ocultan** en lugar de mostrarse deshabilitados.
 - **`touch` opcional en el shell, con la clase `av-player--touch`.** Aísla el cambio y no afecta a la play-page genérica.
@@ -167,7 +168,7 @@ Reglas de emisión:
 
 > Borrador sin revisar.
 
-- **Sin salida a mitad de partida.** Con SALIR oculto, el único camino es el botón atrás del navegador. Si resulta incómodo, un SALIR pequeño en el pie junto a PAUSA es un cambio trivial.
+- **Salida a mitad de partida.** Resuelto con el botón REGRESAR del pie. Sigue sin haber FIN: terminar la partida a propósito no es posible en móvil.
 - **Reubicar el selector de skins.** Hoy vive en el HUD (`hudExtra`). Moverlo al pie en móvil exige reordenar el DOM del shell (o usar `display: contents` y `order`) sin duplicar el `<select>` ni su `id`.
 - **Tetris es un canvas alto (300×600).** Con HUD, mando y pie, el tablero quedará pequeño en móviles de pantalla baja. Hay que medir antes de dar por buena la escala.
 - **Altura de viewport en móvil.** Las barras del navegador cambian `100vh`; usar `dvh` y probar en Chrome Android y en iOS Safari.
