@@ -1027,6 +1027,129 @@ a {
   display: flex;
   gap: 10px;
 }
+/* Wrapper is layout-neutral: hudExtra stays a direct flex child of the HUD row */
+.hud-extra {
+  display: contents;
+}
+
+/* ===== touch controls (mobile only, see SPEC 10) ===== */
+.touch-controls,
+.touch-footer {
+  display: none;
+}
+@media (hover: none) and (pointer: coarse) {
+  .av-player--touch .touch-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    gap: 16px;
+    padding: 14px 12px 6px;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    touch-action: none;
+  }
+  .av-player--touch .touch-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 10px 12px;
+  }
+
+  .touch-dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 64px);
+  }
+  .touch-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 3px;
+    padding: 0;
+    font-family: var(--pixel);
+    color: var(--cyan);
+    background: rgba(0, 245, 255, 0.06);
+    border: 2px solid var(--cyan);
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow:
+      0 0 8px rgba(0, 245, 255, 0.35),
+      inset 0 0 8px rgba(0, 245, 255, 0.15);
+    transition:
+      transform 60ms ease,
+      background 60ms ease,
+      box-shadow 60ms ease;
+  }
+  .touch-btn:disabled {
+    opacity: 0.4;
+  }
+  .touch-btn.is-pressed {
+    transform: scale(0.93);
+    background: rgba(0, 245, 255, 0.28);
+    box-shadow:
+      0 0 16px rgba(0, 245, 255, 0.7),
+      inset 0 0 12px rgba(0, 245, 255, 0.4);
+  }
+  .touch-dir {
+    width: 58px;
+    height: 58px;
+    font-size: 18px;
+    border-radius: 12px;
+  }
+  .touch-dir-up {
+    grid-area: 1 / 2;
+  }
+  .touch-dir-left {
+    grid-area: 2 / 1;
+  }
+  .touch-dir-right {
+    grid-area: 2 / 3;
+  }
+  .touch-dir-down {
+    grid-area: 3 / 2;
+  }
+
+  .touch-actions {
+    display: flex;
+    gap: 14px;
+  }
+  .touch-action {
+    width: 70px;
+    height: 70px;
+    font-size: 16px;
+    border-radius: 50%;
+  }
+  .touch-action-a {
+    color: var(--magenta);
+    border-color: var(--magenta);
+    box-shadow:
+      0 0 8px rgba(255, 0, 110, 0.35),
+      inset 0 0 8px rgba(255, 0, 110, 0.15);
+  }
+  .touch-action-a.is-pressed {
+    background: rgba(255, 0, 110, 0.28);
+    box-shadow:
+      0 0 16px rgba(255, 0, 110, 0.7),
+      inset 0 0 12px rgba(255, 0, 110, 0.4);
+  }
+  .touch-action-b {
+    margin-top: 28px;
+    color: var(--yellow);
+    border-color: var(--yellow);
+    box-shadow:
+      0 0 8px rgba(245, 255, 0, 0.35),
+      inset 0 0 8px rgba(245, 255, 0, 0.15);
+  }
+  .touch-action-b.is-pressed {
+    background: rgba(245, 255, 0, 0.25);
+    box-shadow:
+      0 0 16px rgba(245, 255, 0, 0.7),
+      inset 0 0 12px rgba(245, 255, 0, 0.4);
+  }
+}
 
 .crt {
   position: relative;

@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useUser } from '@/app/context/UserContext';
 import { createClient } from '@/lib/supabase/client';
+import TouchControls, {
+  type TouchControlsConfig,
+} from '@/components/games/TouchControls';
 
 const MAX_SCORE = 10_000_000;
 const REDIRECT_DELAY = 1200; // ms, para que se vea "PUNTUACIÓN GUARDADA"
@@ -20,6 +23,7 @@ interface GamePlayShellProps {
   onForceEnd: () => void;
   onRestart: () => void;
   hudExtra?: React.ReactNode;
+  touch?: TouchControlsConfig;
   children: React.ReactNode;
 }
 
@@ -34,6 +38,7 @@ export default function GamePlayShell({
   onForceEnd,
   onRestart,
   hudExtra,
+  touch,
   children,
 }: GamePlayShellProps) {
   const { user } = useUser();
@@ -79,7 +84,7 @@ export default function GamePlayShell({
   }
 
   return (
-    <div className="av-player fade-in">
+    <div className={`av-player fade-in${touch ? ' av-player--touch' : ''}`}>
       <div className="player-hud">
         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
           <div className="hud-stat">
@@ -97,7 +102,7 @@ export default function GamePlayShell({
               <div className="v">{s.value}</div>
             </div>
           ))}
-          {hudExtra}
+          {hudExtra && <div className="hud-extra">{hudExtra}</div>}
         </div>
         <div className="hud-actions">
           <button className="btn yellow" onClick={onTogglePause}>
@@ -145,6 +150,21 @@ export default function GamePlayShell({
           <span>CARGA · 1MB</span>
         </div>
       </div>
+
+      {touch && (
+        <>
+          <TouchControls config={touch} disabled={paused || over} />
+          <div className="touch-footer">
+            <button
+              className="btn yellow touch-pause"
+              onClick={onTogglePause}
+              disabled={over}
+            >
+              {paused ? 'REANUDAR' : 'PAUSA'}
+            </button>
+          </div>
+        </>
+      )}
 
       {over && (
         <div className="modal-bd">
