@@ -20,6 +20,7 @@ const SnakeGame = dynamic(() => import('@/components/games/SnakeGame'), {
 
 const TOUCH: TouchControlsConfig = {
   dpad: ['left', 'right', 'up', 'down'],
+  statsLine: ['Puntuación'],
 };
 
 export default function SnakePlay() {

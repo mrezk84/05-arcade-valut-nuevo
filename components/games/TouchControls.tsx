@@ -21,6 +21,8 @@ export interface TouchControlsConfig {
   dpad: DpadDir[];
   repeat?: DpadDir[];
   buttons?: TouchButton[];
+  statsLine?: string[]; // labels of the HUD stats shown as one thin line under the screen (for 4:3 games with no free side area)
+  statsPanel?: string[]; // labels of the HUD stats to show inside the CRT (the stats strip is hidden on touch)
 }
 
 interface TouchControlsProps {

@@ -147,6 +147,21 @@ export default function GamePlayShell({
       <div className="crt">
         <div className="crt-screen">
           {children}
+          {touch?.statsPanel && (
+            <div className="touch-stats">
+              {stats
+                .filter((s) => touch.statsPanel?.includes(s.label))
+                .map((s) => (
+                  <div
+                    key={s.label}
+                    className={`hud-stat${s.className ? ` ${s.className}` : ''}`}
+                  >
+                    <div className="l">{s.label}</div>
+                    <div className="v">{s.value}</div>
+                  </div>
+                ))}
+            </div>
+          )}
           {paused && (
             <div
               className="crt-content"
@@ -171,6 +186,21 @@ export default function GamePlayShell({
             </div>
           )}
         </div>
+        {touch?.statsLine && (
+          <div className="touch-stats-line">
+            {stats
+              .filter((s) => touch.statsLine?.includes(s.label))
+              .map((s) => (
+                <div
+                  key={s.label}
+                  className={`hud-stat${s.className ? ` ${s.className}` : ''}`}
+                >
+                  <span className="l">{s.label}</span>
+                  <span className="v">{s.value}</span>
+                </div>
+              ))}
+          </div>
+        )}
         <div className="crt-bottom">
           <span className="led">SEÑAL OK</span>
           <span>{title} · CRT-83 · 60 HZ</span>

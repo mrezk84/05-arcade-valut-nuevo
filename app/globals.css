@@ -1040,7 +1040,9 @@ a {
 /* ===== touch controls (mobile only, see SPEC 10) ===== */
 .touch-controls,
 .touch-footer,
-.touch-rotate {
+.touch-rotate,
+.touch-stats,
+.touch-stats-line {
   display: none;
 }
 @media (hover: none) and (pointer: coarse) {
@@ -1141,6 +1143,49 @@ a {
     width: 100cqw;
     height: 100cqh;
     aspect-ratio: auto;
+  }
+  /* Stats panel in the free strip left of the Tetris board (mirrors the "next" panel on the right) */
+  .av-player--touch .touch-stats {
+    position: absolute;
+    top: 3cqh;
+    left: 1cqw;
+    width: 17cqw;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .av-player--touch .touch-stats .hud-stat {
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .av-player--touch .touch-stats .l {
+    font-size: 7px;
+    letter-spacing: 0.08em;
+  }
+  .av-player--touch .touch-stats .v {
+    font-size: 10px;
+    white-space: nowrap;
+  }
+  /* On tall phones the board would grow into both side panels: cap its width so they always fit */
+  .av-player--touch .tetris-board {
+    height: min(94cqh, 120cqw);
+  }
+  /* One thin stats line under a 4:3 screen (inside the CRT frame, where crt-bottom used to be) */
+  .av-player--touch .touch-stats-line {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin-top: 8px;
+  }
+  .av-player--touch .touch-stats-line .hud-stat {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .av-player--touch .touch-stats-line .v {
+    font-size: 12px;
   }
   /* Keyboard hint under the page makes no sense on touch */
   body:has(.av-player--touch) .tetris-below {
