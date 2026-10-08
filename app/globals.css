@@ -1347,19 +1347,12 @@ a {
       color 140ms ease,
       box-shadow 140ms ease;
   }
+  /* Pause / game over: the pad stays visible but dimmed. showInactive controls are dimmer still */
   .touch-btn:disabled {
     opacity: 0.4;
   }
   .touch-btn.is-inactive {
     opacity: 0.22;
-    box-shadow: none;
-  }
-  .touch-btn.is-pressed {
-    transform: scale(0.93);
-    background: rgba(0, 245, 255, 0.28);
-    box-shadow:
-      0 0 16px rgba(0, 245, 255, 0.7),
-      inset 0 0 12px rgba(0, 245, 255, 0.4);
   }
 
   /* D-pad keys: dark physical keys that sink and glow cyan when pressed (SPEC 11) */
@@ -1393,12 +1386,6 @@ a {
   .touch-dir.is-pressed .touch-dir-arrow {
     filter: drop-shadow(0 0 6px var(--cyan));
   }
-  .touch-dir.is-inactive {
-    box-shadow:
-      0 4px 0 #050507,
-      inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  }
-
   /* Hub: decorative center cell with the pulsing cyan gem */
   .touch-hub {
     grid-area: 2 / 2;
@@ -1433,6 +1420,11 @@ a {
   @media (prefers-reduced-motion: reduce) {
     .touch-hub-gem {
       animation: none;
+    }
+    .touch-btn,
+    .touch-dir-arrow,
+    .touch-action-ring {
+      transition: none;
     }
   }
   .touch-dir-up {
@@ -1510,6 +1502,11 @@ a {
     transition:
       opacity 140ms ease,
       transform 200ms ease;
+  }
+  .touch-action.is-inactive {
+    box-shadow:
+      0 6px 0 #050507,
+      inset 0 -4px 8px rgba(0, 0, 0, 0.4);
   }
   .touch-action.is-pressed {
     transform: translateY(4px) scale(0.97);
