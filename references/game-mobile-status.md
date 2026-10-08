@@ -13,4 +13,6 @@ Estados: `ok` · `falta` · `falla` · `—` (sin auditar).
 | `arkanoid`  | ok    | ok           | ok        | ok (canvas) | ok                     | 2026-10-08      | `dpad` left/right con `showInactive`; sin botones activos.                                                     |
 | `snake`     | ok    | ok           | ok        | ok          | ok                     | 2026-10-08      | `dpad` 4 dir; sin A/B; `statsLine` Puntuación.                                                                 |
 
-Pendiente en todos: confirmar en un móvil real (SPEC 10 se verificó solo con emulación táctil) y el guardado del score con el mando.
+Desde SPEC 11 (2026-10-08) el mando usa el aspecto Gamepad MK-II neón (carcasa, cruceta con hub, B cian a la izquierda y A magenta a la derecha); el mapeo no cambia.
+
+Pendiente en todos: confirmar en un móvil real (SPEC 10 se verificó solo con emulación táctil) y el multitáctil con dos dedos (SPEC 11) y el guardado del score con el mando.

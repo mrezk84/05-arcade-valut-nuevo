@@ -1,7 +1,9 @@
 # SPEC 11 — Gamepad MK-II neón para el mando táctil
 
-> **Estado:** Aprobado · **Depende de:** SPEC 10 · **Fecha:** 2026-10-08
+> **Estado:** Implementado · **Depende de:** SPEC 10 · **Fecha:** 2026-10-08
 > **Objetivo:** Sustituir el aspecto del mando táctil de SPEC 10 por el diseño Gamepad MK-II neón de `references/gamepad-assets/` en los 4 juegos, sin cambiar su comportamiento ni el escritorio.
+
+> **Nota de verificación:** los criterios se comprobaron con un móvil emulado (Chromium con táctil y `pointer: coarse`, 360×640 y 412×915) y con capturas de pantalla. Faltan dos comprobaciones en un móvil real: el multitáctil con dos dedos y el aspecto del glow en gama baja.
 
 ---
 
@@ -72,17 +74,15 @@ No hay cambios en Supabase ni en `localStorage`, y `TouchControlsConfig` no camb
 
 ## Acceptance criteria
 
-> Borrador sin revisar.
-
-- [ ] En móvil táctil, el mando de los 4 juegos se ve como `gamepad-neon.png`: carcasa, cruceta con hub y rombo, B cian a la izquierda y A magenta a la derecha.
-- [ ] Pulsar un control lo hunde y le aplica glow; al soltar vuelve a su estado. Se pueden mantener dos controles a la vez con dos dedos.
-- [ ] Snake no muestra A/B. En Arkanoid, ↑, ↓, A y B se ven atenuados, deshabilitados y sin emitir teclas.
-- [ ] El mapeo de teclas y el auto-repeat de SPEC 10 funcionan igual en los 4 juegos.
-- [ ] A 360×640 y 412×915 el canvas, el mando y el pie caben sin scroll ni cortes, y la separación de ~50 px sobre la flecha ↑ se mantiene.
-- [ ] Al pausar o terminar la partida, el mando no envía teclas.
-- [ ] En escritorio (ratón) no hay ningún cambio, y `/games/[id]/play` (genérica) tampoco.
-- [ ] Con `prefers-reduced-motion`, el rombo del hub no se anima.
-- [ ] `npm run build` pasa y `npm run lint` no añade errores nuevos respecto a los previos de SPEC 10.
+- [x] En móvil táctil, el mando de los 4 juegos se ve como `gamepad-neon.png`: carcasa, cruceta con hub y rombo, B cian a la izquierda y A magenta a la derecha.
+- [ ] Pulsar un control lo hunde y le aplica glow; al soltar vuelve a su estado. Se pueden mantener dos controles a la vez con dos dedos. _(El hundido y el glow se comprobaron con toques emulados; mantener dos controles a la vez con dos dedos falta probarlo en un móvil real.)_
+- [x] Snake no muestra A/B. En Arkanoid, ↑, ↓, A y B se ven atenuados, deshabilitados y sin emitir teclas.
+- [x] El mapeo de teclas y el auto-repeat de SPEC 10 funcionan igual en los 4 juegos.
+- [x] A 360×640 y 412×915 el canvas, el mando y el pie caben sin scroll ni cortes, y la separación de ~50 px sobre la flecha ↑ se mantiene.
+- [x] Al pausar o terminar la partida, el mando no envía teclas.
+- [x] En escritorio (ratón) no hay ningún cambio, y `/games/[id]/play` (genérica) tampoco.
+- [x] Con `prefers-reduced-motion`, el rombo del hub no se anima.
+- [x] `npm run build` pasa y `npm run lint` no añade errores nuevos respecto a los previos de SPEC 10. _(Los errores de lint están en `app/page.tsx`, `app/games/[id]/play/page.tsx` y `GamePlayShell.tsx`, previos a esta spec.)_
 
 ---
 
