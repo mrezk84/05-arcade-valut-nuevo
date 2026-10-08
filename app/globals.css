@@ -1318,6 +1318,10 @@ a {
   .touch-btn:disabled {
     opacity: 0.4;
   }
+  .touch-btn.is-inactive {
+    opacity: 0.22;
+    box-shadow: none;
+  }
   .touch-btn.is-pressed {
     transform: scale(0.93);
     background: rgba(0, 245, 255, 0.28);

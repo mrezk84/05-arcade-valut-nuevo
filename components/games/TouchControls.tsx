@@ -21,6 +21,7 @@ export interface TouchControlsConfig {
   dpad: DpadDir[];
   repeat?: DpadDir[];
   buttons?: TouchButton[];
+  showInactive?: boolean; // draws the full pad (4 directions + A/B); controls the game does not use are dimmed and do nothing
   statsLine?: string[]; // labels of the HUD stats shown as one thin line under the screen (for 4:3 games with no free side area)
   statsPanel?: string[]; // labels of the HUD stats to show inside the CRT (the stats strip is hidden on touch)
 }
@@ -59,6 +60,9 @@ const DIR_LABEL: Record<DpadDir, string> = {
   up: 'Arriba',
   down: 'Abajo',
 };
+
+const ALL_DIRS: DpadDir[] = ['up', 'left', 'right', 'down'];
+const ALL_LABELS: TouchButton['label'][] = ['A', 'B'];
 
 const REPEAT_DELAY = 200; // ms before the first repeated keydown
 const REPEAT_INTERVAL = 100; // ms between repeated keydowns
@@ -137,6 +141,8 @@ export default function TouchControls({
     (controlId: string): { key: TouchKey; repeatable: boolean } | null => {
       if (controlId.startsWith('dir:')) {
         const dir = controlId.slice(4) as DpadDir;
+        // Dimmed placeholders (showInactive) never emit
+        if (!config.dpad.includes(dir)) return null;
         return {
           key: DIR_KEY[dir],
           repeatable: config.repeat?.includes(dir) ?? false,
@@ -236,41 +242,52 @@ export default function TouchControls({
   }, [releaseAll]);
 
   const buttons = config.buttons ?? [];
+  const dirs = config.showInactive ? ALL_DIRS : config.dpad;
+  // Unused buttons (no entry in config.buttons) only exist as dimmed placeholders with showInactive
+  const actions = config.showInactive
+    ? ALL_LABELS.map((label) => ({
+        label,
+        button: buttons.find((b) => b.label === label),
+      }))
+    : buttons.map((button) => ({ label: button.label, button }));
 
   return (
     <div className="touch-controls" role="group" aria-label="Controles">
       <div className="touch-dpad">
-        {config.dpad.map((dir) => (
-          <PadButton
-            key={dir}
-            controlId={`dir:${dir}`}
-            className={`touch-btn touch-dir touch-dir-${dir}`}
-            ariaLabel={DIR_LABEL[dir]}
-            pressed={pressed.has(`dir:${dir}`)}
-            disabled={disabled}
-            onPress={handlePress}
-            onMove={handleMove}
-            onRelease={handleRelease}
-          >
-            {DIR_GLYPH[dir]}
-          </PadButton>
-        ))}
-      </div>
-      {buttons.length > 0 && (
-        <div className="touch-actions">
-          {buttons.map((b) => (
+        {dirs.map((dir) => {
+          const active = config.dpad.includes(dir);
+          return (
             <PadButton
-              key={b.label}
-              controlId={`btn:${b.label}`}
-              className={`touch-btn touch-action touch-action-${b.label.toLowerCase()}`}
-              ariaLabel={b.ariaLabel}
-              pressed={pressed.has(`btn:${b.label}`)}
-              disabled={disabled}
+              key={dir}
+              controlId={`dir:${dir}`}
+              className={`touch-btn touch-dir touch-dir-${dir}${active ? '' : ' is-inactive'}`}
+              ariaLabel={DIR_LABEL[dir]}
+              pressed={pressed.has(`dir:${dir}`)}
+              disabled={disabled || !active}
               onPress={handlePress}
               onMove={handleMove}
               onRelease={handleRelease}
             >
-              {b.label}
+              {DIR_GLYPH[dir]}
+            </PadButton>
+          );
+        })}
+      </div>
+      {actions.length > 0 && (
+        <div className="touch-actions">
+          {actions.map(({ label, button }) => (
+            <PadButton
+              key={label}
+              controlId={`btn:${label}`}
+              className={`touch-btn touch-action touch-action-${label.toLowerCase()}${button ? '' : ' is-inactive'}`}
+              ariaLabel={button?.ariaLabel ?? `${label} sin función`}
+              pressed={pressed.has(`btn:${label}`)}
+              disabled={disabled || !button}
+              onPress={handlePress}
+              onMove={handleMove}
+              onRelease={handleRelease}
+            >
+              {label}
             </PadButton>
           ))}
         </div>

@@ -19,6 +19,7 @@ const ArkanoidGame = dynamic(() => import('@/components/games/ArkanoidGame'), {
 
 const TOUCH: TouchControlsConfig = {
   dpad: ['left', 'right'],
+  showInactive: true,
 };
 
 export default function ArkanoidPlay() {

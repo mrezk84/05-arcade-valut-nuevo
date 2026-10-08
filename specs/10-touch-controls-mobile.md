@@ -16,9 +16,9 @@
 - Mapeo por juego, declarado en cada play-page:
   - Asteroids: ← → rotar · ↑ empuje (igual que B) · ↓ sin efecto en el juego · A = disparar (`Space`) · B = empuje (`ArrowUp`).
   - Tetris: ← → ↓ · ↑ rotar (igual que A) · A = rotar (`ArrowUp`) · B = caída rápida (`Space`).
-  - Arkanoid: ← → mueven el paddle. Sin botones A/B.
+  - Arkanoid: ← → mueven el paddle. El mando se dibuja completo, igual que en Asteroids y Tetris (cruceta de 4 direcciones y A/B), pero solo ← → están activos: ↑, ↓, A y B salen atenuados y no hacen nada (opción `showInactive`).
   - Snake: ← ↑ → ↓. Sin botones A/B.
-- Los botones sin uso no se muestran. La cruceta se adapta al juego (por ejemplo, Arkanoid solo necesita ← →).
+- Los controles sin uso no se muestran, salvo en los juegos que activan `showInactive` (Arkanoid), donde se dibujan atenuados e inactivos para que el mando se vea igual que en los demás.
 - Layout móvil de `/games/<id>/play`, solo con `@media (hover: none) and (pointer: coarse)`:
   - De arriba abajo: canvas escalado al espacio disponible manteniendo su proporción, mando virtual y, al pie, en una sola fila, PAUSA/REANUDAR, REGRESAR (enlace a `/games/<id>`) y el selector de skins (cuando el juego lo tiene). Hay unos 50 px de separación entre el borde de la pantalla y la flecha ↑ de la cruceta. La franja de stats (puntuación, vidas/longitud, nivel) se oculta en móvil para dejar la altura al juego: durante la partida se ve la puntuación que dibujan Asteroids y Arkanoid en su propio canvas. Tetris muestra puntuación, líneas y nivel en un panel dentro del CRT, en el hueco a la izquierda del tablero (opción `statsPanel`); Snake muestra la puntuación en una línea fina centrada bajo la pantalla, dentro del marco del CRT (opción `statsLine`). En Tetris el ancho del tablero se limita en móvil para que quepan el panel de stats y el de "Siguiente".
   - El modal de fin de partida se adapta al ancho del móvil: el campo de nombre y los botones se apilan a todo el ancho del recuadro (solo CSS, sin tocar su lógica).
@@ -67,6 +67,7 @@ export interface TouchControlsConfig {
   dpad: DpadDir[]; // direcciones visibles; las demás no se dibujan
   repeat?: DpadDir[]; // direcciones con auto-repeat al mantener pulsado
   buttons?: TouchButton[]; // 0, 1 o 2 botones; sin botones no se dibuja la zona de acción
+  showInactive?: boolean; // dibuja el mando completo (4 direcciones y A/B); lo que el juego no usa sale atenuado y no hace nada
   statsLine?: string[]; // etiquetas de las stats del HUD que se muestran como una línea fina bajo la pantalla (juegos 4:3 sin hueco lateral)
   statsPanel?: string[]; // etiquetas de las stats del HUD que se muestran dentro del CRT (la franja de stats se oculta en móvil)
 }
@@ -103,7 +104,7 @@ Los eventos llevan siempre `key` y `code`, porque Asteroids y Tetris leen `e.cod
 | --------- | ----------------------------- | ----------------------- | ---------------------------------------------------------------------------------------- |
 | Asteroids | `left`, `right`, `up`, `down` | —                       | A `Space` (Disparar) · B `ArrowUp` (Impulso)                                             |
 | Tetris    | `left`, `right`, `up`, `down` | `left`, `right`, `down` | A `ArrowUp` (Rotar) · B `Space` (Caída rápida) · `statsPanel`: Puntuación, Líneas, Nivel |
-| Arkanoid  | `left`, `right`               | —                       | —                                                                                        |
+| Arkanoid  | `left`, `right`               | —                       | — · `showInactive`: sí                                                                   |
 | Snake     | `left`, `right`, `up`, `down` | —                       | — · `statsLine`: Puntuación                                                              |
 
 Reglas de emisión:
@@ -123,7 +124,7 @@ Reglas de emisión:
 3. **Layout móvil.** Con la clase `av-player--touch` en móvil: ocultar Nav, footer del sitio, la franja de stats, JUGADOR, FIN, SALIR y `crt-bottom`; canvas escalado al espacio disponible (`dvh`) con su proporción.
 4. **Landscape.** Aviso "gira el dispositivo" y pausa automática al entrar en landscape (el shell llama a `onTogglePause` si el juego no estaba pausado).
 5. **Asteroids y Tetris.** Pasar `touch` en sus play-pages con el mapeo de la tabla (cruceta y botones A/B). Comprobar que la caída y el movimiento repetido de Tetris funcionan con `repeat`.
-6. **Arkanoid y Snake.** Pasar `touch` en sus play-pages (solo cruceta). Comprobar que Snake no llena su cola de giros.
+6. **Arkanoid y Snake.** Pasar `touch` en sus play-pages (Arkanoid con `showInactive`). Comprobar que Snake no llena su cola de giros.
 7. **Viewport y ajustes táctiles.** `viewport` en `app/layout.tsx`, `touch-action: none` y `user-select: none` en los controles. Verificación en emulación táctil y en móvil real con los 4 juegos y en escritorio (sin cambios). Actualizar el estado de la spec a `Implementado` y la mención en `CLAUDE.md` si procede.
 
 ---
@@ -136,7 +137,7 @@ Reglas de emisión:
 - [x] En escritorio (ratón), las 4 play-pages se ven y funcionan exactamente igual que antes.
 - [x] Asteroids: ← → rotan la nave, ↑ y B dan empuje, ↓ no hace nada, A dispara, y se pueden mantener A y ← a la vez con dos dedos.
 - [x] Tetris: ← → ↓ mueven la pieza y repiten al mantener pulsado, ↑ y A rotan sin repetirse, B hace caída rápida sin repetirse.
-- [x] Arkanoid: ← → mueven el paddle mientras se mantienen pulsados y no hay botones A/B visibles.
+- [x] Arkanoid: ← → mueven el paddle mientras se mantienen pulsados; el mando tiene la misma geometría que el de Asteroids, con ↑, ↓, A y B atenuados, deshabilitados y sin emitir teclas.
 - [x] Snake: las 4 direcciones giran la serpiente, y no hay botones A/B visibles.
 - [x] Soltar el dedo, o sacarlo del control, detiene el movimiento: no quedan teclas "pegadas".
 - [x] Al pausar o al terminar la partida, el mando no envía teclas al juego.
@@ -164,7 +165,7 @@ Reglas de emisión:
 - **Solo portrait, con aviso y pausa automática en landscape.** Descartado: soportar landscape (fuera de alcance).
 - **Ocultar Nav, footer, JUGADOR, FIN y SALIR en móvil.** Prioriza espacio de pantalla. Para salir a mitad de partida hay un botón REGRESAR en el pie, junto a PAUSA y al selector de skins (añadido tras probar el layout).
 - **`repeat` explícito por dirección y no global.** Solo Tetris lo necesita. En Snake una repetición de la misma dirección llenaría la cola de giros.
-- **Los botones sin uso se ocultan** en lugar de mostrarse deshabilitados.
+- **Los botones sin uso se ocultan** por defecto. Excepción: Arkanoid usa `showInactive` y muestra el mando completo con lo inactivo atenuado, para que se vea igual que en los demás juegos.
 - **`touch` opcional en el shell, con la clase `av-player--touch`.** Aísla el cambio y no afecta a la play-page genérica.
 - **Definición rápida de las secciones 4–7:** redactadas por el asistente sin la revisión sección por sección del usuario, a petición de guardar la spec.
 
