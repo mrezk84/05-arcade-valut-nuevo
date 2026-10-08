@@ -1463,7 +1463,11 @@ a {
     border-radius: 50%;
     border: 2px solid currentColor;
     background:
-      radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.25), transparent 50%),
+      radial-gradient(
+        circle at 32% 26%,
+        rgba(255, 255, 255, 0.25),
+        transparent 50%
+      ),
       radial-gradient(circle at 50% 55%, var(--ab-mid), var(--ab-deep) 75%);
     box-shadow:
       0 6px 0 #050507,
@@ -1510,7 +1514,11 @@ a {
   .touch-action.is-pressed {
     transform: translateY(4px) scale(0.97);
     background:
-      radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.25), transparent 50%),
+      radial-gradient(
+        circle at 32% 26%,
+        rgba(255, 255, 255, 0.25),
+        transparent 50%
+      ),
       radial-gradient(circle at 50% 55%, var(--ab-mid), var(--ab-deep) 75%);
     box-shadow:
       0 1px 0 #050507,
