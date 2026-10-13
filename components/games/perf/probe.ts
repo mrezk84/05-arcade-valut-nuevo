@@ -58,8 +58,9 @@ export function createPerfProbe(gameId: string, skin: string): PerfProbe {
       fpsAvg: Math.round((1000 / (sum / count)) * 10) / 10,
       fpsMin: Math.round((1000 / sorted[count - 1]) * 10) / 10,
       frameP95:
-        Math.round(sorted[Math.min(count - 1, Math.floor(count * 0.95))] * 100) /
-        100,
+        Math.round(
+          sorted[Math.min(count - 1, Math.floor(count * 0.95))] * 100,
+        ) / 100,
       frames,
     };
     console.log('[perf]', r);
