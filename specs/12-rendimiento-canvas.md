@@ -1,6 +1,6 @@
 # SPEC 12 — Rendimiento del canvas (sonda en los 5 juegos, optimización de Frogger)
 
-> **Estado:** Aprobado · **Depende de:** SPEC 05, 07, 08, 09 y el juego Frogger (`specs/game-jam/frogger/`) · **Fecha:** 2026-10-13
+> **Estado:** Implementado · **Depende de:** SPEC 05, 07, 08, 09 y el juego Frogger (`specs/game-jam/frogger/`) · **Fecha:** 2026-10-13
 > **Objetivo:** Eliminar los bajones de FPS de Frogger en escritorio y móvil optimizando el dibujado del canvas, y dejar instalada la sonda de medición en los 5 juegos (Asteroids, Tetris, Arkanoid, Snake y Frogger) para specs futuros, sin cambiar el aspecto de los skins, la lógica de juego ni añadir estado de React.
 
 ---
