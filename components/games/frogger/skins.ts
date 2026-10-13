@@ -13,6 +13,7 @@ import {
   ROW_START,
   type Entity,
 } from './constants';
+import { bakeSprite, getBaked } from '../perf/spriteCache';
 
 export type SkinId = 'classic' | 'neon' | 'retro';
 
@@ -52,11 +53,17 @@ const GOAL_Y = 18;
 const GOAL_H = CELL - GOAL_Y;
 const GOAL_W = GOAL_WIDTH * CELL;
 
-function forEachGoal(
-  goals: boolean[],
-  cb: (x: number, filled: boolean) => void,
-) {
-  GOAL_COLS.forEach((col, i) => cb(col * CELL, goals[i]));
+// Etiquetas del HUD: solo se reconstruye el string cuando cambia el valor.
+function memoLabel(prefix: string) {
+  let last = -1;
+  let text = '';
+  return (n: number) => {
+    if (n !== last) {
+      last = n;
+      text = prefix + n;
+    }
+    return text;
+  };
 }
 
 // ── classic: the original look (unchanged) ─────────────────────────────────
@@ -178,6 +185,9 @@ function classicFrog(
   ctx.restore();
 }
 
+const classicScore = memoLabel('SCORE ');
+const classicLevel = memoLabel('NIVEL ');
+
 const classic: FroggerSkin = {
   name: 'Clásico',
   drawBackground(ctx) {
@@ -260,7 +270,9 @@ const classic: FroggerSkin = {
     }
   },
   drawGoals(ctx, goals) {
-    forEachGoal(goals, (x, filled) => {
+    for (let i = 0; i < GOAL_COLS.length; i++) {
+      const x = GOAL_COLS[i] * CELL;
+      const filled = goals[i];
       ctx.fillStyle = '#4ade80';
       ctx.fillRect(x, GOAL_Y, GOAL_W, GOAL_H);
       ctx.strokeStyle = '#fbbf24';
@@ -269,7 +281,7 @@ const classic: FroggerSkin = {
       if (filled) {
         classicFrog(ctx, x + GOAL_W / 2, GOAL_Y + GOAL_H / 2, 0.6, false);
       }
-    });
+    }
   },
   drawFrog: classicFrog,
   drawHud(ctx, { score, level, lives, timeRatio }) {
@@ -281,9 +293,9 @@ const classic: FroggerSkin = {
     ctx.font = '14px monospace';
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
-    ctx.fillText(`SCORE ${score}`, 8, 16);
+    ctx.fillText(classicScore(score), 8, 16);
     ctx.textAlign = 'center';
-    ctx.fillText(`NIVEL ${level}`, CANVAS_W / 2, 16);
+    ctx.fillText(classicLevel(level), CANVAS_W / 2, 16);
     ctx.fillStyle = '#22c55e';
     for (let i = 0; i < lives; i++) {
       ctx.beginPath();
@@ -550,7 +562,9 @@ const neon: FroggerSkin = {
     }
   },
   drawGoals(ctx, goals) {
-    forEachGoal(goals, (x, filled) => {
+    for (let i = 0; i < GOAL_COLS.length; i++) {
+      const x = GOAL_COLS[i] * CELL;
+      const filled = goals[i];
       neonShape(ctx, NEON.goal, 0, 8, () =>
         ctx.rect(x + 2, GOAL_Y + 1, GOAL_W - 4, GOAL_H - 2),
       );
@@ -559,7 +573,7 @@ const neon: FroggerSkin = {
       if (filled) {
         neonFrog(ctx, x + GOAL_W / 2, GOAL_Y + GOAL_H / 2, 0.6, false);
       }
-    });
+    }
   },
   drawFrog: neonFrog,
   drawHud(ctx, { score, level, lives, timeRatio }) {
@@ -569,7 +583,39 @@ const neon: FroggerSkin = {
     ctx.shadowBlur = 10;
     ctx.fillStyle = timer;
     ctx.fillRect(0, 0, CANVAS_W * timeRatio, 4);
+    ctx.restore();
+    ctx.drawImage(neonHudText(score, level, lives), 0, 0);
+  },
+};
 
+// Texto y vidas del HUD con glow: solo se vuelven a pintar si cambian los valores
+const hudLayer = { canvas: null as HTMLCanvasElement | null };
+let hudScoreSeen = -1;
+let hudLevelSeen = -1;
+let hudLivesSeen = -1;
+
+function neonHudText(
+  score: number,
+  level: number,
+  lives: number,
+): HTMLCanvasElement {
+  if (!hudLayer.canvas) {
+    hudLayer.canvas = document.createElement('canvas');
+    hudLayer.canvas.width = CANVAS_W;
+    hudLayer.canvas.height = 32;
+  }
+  const layer = hudLayer.canvas;
+  if (
+    score !== hudScoreSeen ||
+    level !== hudLevelSeen ||
+    lives !== hudLivesSeen
+  ) {
+    hudScoreSeen = score;
+    hudLevelSeen = level;
+    hudLivesSeen = lives;
+    const ctx = layer.getContext('2d')!;
+    ctx.clearRect(0, 0, layer.width, layer.height);
+    ctx.save();
     ctx.shadowColor = NEON.text;
     ctx.shadowBlur = 6;
     ctx.fillStyle = NEON.text;
@@ -592,8 +638,9 @@ const neon: FroggerSkin = {
       ctx.stroke();
     }
     ctx.restore();
-  },
-};
+  }
+  return layer;
+}
 
 // ── retro: 1981 arcade cabinet, 8 colours, solid pixels, scanlines ─────────
 
@@ -620,14 +667,15 @@ function pixelSprite(
   oy: number,
   px: number,
 ) {
-  sprite.forEach((line, y) => {
+  for (let y = 0; y < sprite.length; y++) {
+    const line = sprite[y];
     for (let x = 0; x < line.length; x++) {
       const c = colours[line[x]];
       if (!c) continue;
       ctx.fillStyle = c;
       ctx.fillRect(ox + x * px, oy + y * px, px, px);
     }
-  });
+  }
 }
 
 const FROG_IDLE = [
@@ -686,15 +734,31 @@ function retroFrog(
 ) {
   const px = Math.max(1, Math.round(PX * scale));
   const size = 8 * px;
-  pixelSprite(
-    ctx,
-    jump ? FROG_JUMP : FROG_IDLE,
-    FROG_COLOURS,
+  ctx.drawImage(
+    retroFrogSprite(px, jump),
     snap(cx - size / 2),
     snap(cy - size / 2),
-    px,
   );
 }
+
+// Rana pre-renderizada por tamaño de píxel y pose (SPEC 12)
+const retroFrogCache = new Map<number, HTMLCanvasElement>();
+function retroFrogSprite(px: number, jump: boolean): HTMLCanvasElement {
+  const code = px * 2 + (jump ? 1 : 0);
+  let sprite = retroFrogCache.get(code);
+  if (!sprite) {
+    sprite = getBaked(`frogger:retro:frog:${px}:${jump}`, () =>
+      bakeSprite(8 * px, 8 * px, (b) =>
+        pixelSprite(b, jump ? FROG_JUMP : FROG_IDLE, FROG_COLOURS, 0, 0, px),
+      ),
+    );
+    retroFrogCache.set(code, sprite);
+  }
+  return sprite;
+}
+
+const retroScore = memoLabel('SCORE ');
+const retroLevel = memoLabel('NIVEL ');
 
 const retro: FroggerSkin = {
   name: 'Retro',
@@ -795,7 +859,9 @@ const retro: FroggerSkin = {
     }
   },
   drawGoals(ctx, goals) {
-    forEachGoal(goals, (x, filled) => {
+    for (let i = 0; i < GOAL_COLS.length; i++) {
+      const x = GOAL_COLS[i] * CELL;
+      const filled = goals[i];
       ctx.fillStyle = RETRO.yellow;
       ctx.fillRect(x, GOAL_Y, GOAL_W, GOAL_H);
       ctx.fillStyle = RETRO.road;
@@ -803,7 +869,7 @@ const retro: FroggerSkin = {
       if (filled) {
         retroFrog(ctx, x + GOAL_W / 2, GOAL_Y + GOAL_H / 2 + 2, 0.5, false);
       }
-    });
+    }
   },
   drawFrog: retroFrog,
   drawHud(ctx, { score, level, lives, timeRatio }) {
@@ -819,20 +885,142 @@ const retro: FroggerSkin = {
     ctx.font = 'bold 14px monospace';
     ctx.textBaseline = 'alphabetic';
     ctx.textAlign = 'left';
-    ctx.fillText(`SCORE ${score}`, 8, 16);
+    ctx.fillText(retroScore(score), 8, 16);
     ctx.textAlign = 'center';
-    ctx.fillText(`NIVEL ${level}`, CANVAS_W / 2, 16);
+    ctx.fillText(retroLevel(level), CANVAS_W / 2, 16);
+    const lifeSprite = retroFrogSprite(2, false);
     for (let i = 0; i < lives; i++) {
-      pixelSprite(ctx, FROG_IDLE, FROG_COLOURS, CANVAS_W - 22 - i * 20, 2, 2);
+      ctx.drawImage(lifeSprite, CANVAS_W - 22 - i * 20, 2);
     }
   },
   drawOverlay(ctx) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-    for (let y = 0; y < CANVAS_H; y += 3) ctx.fillRect(0, y, CANVAS_W, 1);
+    ctx.drawImage(
+      getBaked('frogger:retro:overlay', () =>
+        bakeSprite(CANVAS_W, CANVAS_H, (b) => {
+          b.fillStyle = 'rgba(0, 0, 0, 0.22)';
+          for (let y = 0; y < CANVAS_H; y += 3) b.fillRect(0, y, CANVAS_W, 1);
+        }),
+      ),
+      0,
+      0,
+    );
   },
 };
 
-export const SKINS: Record<SkinId, FroggerSkin> = { classic, neon, retro };
+// ── Caché de dibujado (SPEC 12) ─────────────────────────────────────────────
+// Fondo y sprites con coste alto (glow en neon, píxeles en retro) se pintan
+// una vez en un canvas offscreen; cada frame hace un `drawImage`.
+
+const BAKE_PAD = CELL; // margen para que el halo del glow no se recorte
+const ENTITY_TYPES: Entity['type'][] = ['car', 'truck', 'log', 'turtle'];
+
+function withBakedBackground(id: SkinId, skin: FroggerSkin): FroggerSkin {
+  const drawRaw = skin.drawBackground;
+  let baked: HTMLCanvasElement | null = null;
+  return {
+    ...skin,
+    drawBackground(ctx) {
+      baked ??= getBaked(`frogger:${id}:bg`, () =>
+        bakeSprite(CANVAS_W, CANVAS_H, drawRaw),
+      );
+      ctx.drawImage(baked, 0, 0);
+    },
+  };
+}
+
+function withBakedEntities(
+  id: SkinId,
+  skin: FroggerSkin,
+  snapX: (v: number) => number,
+): FroggerSkin {
+  const drawRaw = skin.drawEntity;
+  const fast = new Map<number, HTMLCanvasElement>();
+  return {
+    ...skin,
+    drawEntity(ctx, e, row) {
+      const code =
+        ENTITY_TYPES.indexOf(e.type) * 64 + e.width * 2 + (e.submerged ? 1 : 0);
+      let sprite = fast.get(code);
+      if (!sprite) {
+        const { type, width, submerged } = e;
+        sprite = getBaked(`frogger:${id}:entity:${code}`, () =>
+          bakeSprite(width * CELL + BAKE_PAD * 2, CELL + BAKE_PAD * 2, (b) =>
+            drawRaw(b, { col: 1, width, type, submerged }, BAKE_PAD / CELL),
+          ),
+        );
+        fast.set(code, sprite);
+      }
+      ctx.drawImage(
+        sprite,
+        snapX(e.col * CELL) - BAKE_PAD,
+        row * CELL - BAKE_PAD,
+      );
+    },
+  };
+}
+
+const identity = (v: number) => v;
+
+function withBakedNeonFrog(skin: FroggerSkin): FroggerSkin {
+  const fast = new Map<number, HTMLCanvasElement>();
+  const R = 40; // radio del canvas: cubre la rana más el glow
+  return {
+    ...skin,
+    drawFrog(ctx, cx, cy, scale, jump) {
+      const code = Math.round(scale * 100) * 2 + (jump ? 1 : 0);
+      let sprite = fast.get(code);
+      if (!sprite) {
+        sprite = getBaked(`frogger:neon:frog:${code}`, () =>
+          bakeSprite(R * 2, R * 2, (b) => skin.drawFrog(b, R, R, scale, jump)),
+        );
+        fast.set(code, sprite);
+      }
+      ctx.drawImage(sprite, cx - R, cy - R);
+    },
+  };
+}
+
+// Las 5 bocas con su rana (32 combinaciones posibles) se pre-renderizan por máscara
+function withBakedNeonGoals(skin: FroggerSkin): FroggerSkin {
+  const fast = new Map<number, HTMLCanvasElement>();
+  return {
+    ...skin,
+    drawGoals(ctx, goals) {
+      let mask = 0;
+      for (let i = 0; i < goals.length; i++) if (goals[i]) mask |= 1 << i;
+      let band = fast.get(mask);
+      if (!band) {
+        band = getBaked(`frogger:neon:goals:${mask}`, () =>
+          bakeSprite(CANVAS_W, CELL + BAKE_PAD, (b) =>
+            skin.drawGoals(
+              b,
+              GOAL_COLS.map((_, i) => (mask & (1 << i)) !== 0),
+            ),
+          ),
+        );
+        fast.set(mask, band);
+      }
+      ctx.drawImage(band, 0, 0);
+    },
+  };
+}
+
+const bakedNeon = withBakedNeonGoals(
+  withBakedNeonFrog(
+    withBakedEntities('neon', withBakedBackground('neon', neon), identity),
+  ),
+);
+const bakedRetro = withBakedEntities(
+  'retro',
+  withBakedBackground('retro', retro),
+  snap,
+);
+
+export const SKINS: Record<SkinId, FroggerSkin> = {
+  classic: withBakedBackground('classic', classic),
+  neon: bakedNeon,
+  retro: bakedRetro,
+};
 
 export const SKIN_IDS = Object.keys(SKINS) as SkinId[];
 

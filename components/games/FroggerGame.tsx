@@ -425,6 +425,9 @@ export default function FroggerGame({
       notify();
     }
 
+    // Objeto reutilizado en cada frame (sin asignaciones en draw)
+    const hud = { score: 0, level: 1, lives: 0, timeRatio: 1 };
+
     function draw() {
       // Visual only: the skin never touches the game state
       const S = SKINS[skinRef.current] ?? SKINS.classic;
@@ -448,12 +451,11 @@ export default function FroggerGame({
         1,
         frog.animating,
       );
-      S.drawHud(ctx, {
-        score,
-        level,
-        lives,
-        timeRatio: Math.max(0, Math.min(1, timeLeft / roundTimeFor(level))),
-      });
+      hud.score = score;
+      hud.level = level;
+      hud.lives = lives;
+      hud.timeRatio = Math.max(0, Math.min(1, timeLeft / roundTimeFor(level)));
+      S.drawHud(ctx, hud);
       S.drawOverlay?.(ctx);
     }
 
