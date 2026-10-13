@@ -1,7 +1,7 @@
-# SPEC 12 — Rendimiento del canvas en los 5 juegos
+# SPEC 12 — Rendimiento del canvas (sonda en los 5 juegos, optimización de Frogger)
 
 > **Estado:** Aprobado · **Depende de:** SPEC 05, 07, 08, 09 y el juego Frogger (`specs/game-jam/frogger/`) · **Fecha:** 2026-10-13
-> **Objetivo:** Eliminar los bajones de FPS de los 5 juegos (Asteroids, Tetris, Arkanoid, Snake y Frogger) en escritorio y móvil optimizando el dibujado del canvas, sin cambiar el aspecto de los skins, la lógica de juego ni añadir estado de React.
+> **Objetivo:** Eliminar los bajones de FPS de Frogger en escritorio y móvil optimizando el dibujado del canvas, y dejar instalada la sonda de medición en los 5 juegos (Asteroids, Tetris, Arkanoid, Snake y Frogger) para specs futuros, sin cambiar el aspecto de los skins, la lógica de juego ni añadir estado de React.
 
 ---
 
@@ -15,7 +15,7 @@
   - Heap snapshots al arrancar y a los 60 s de juego, para distinguir una fuga real de la presión del recolector de basura.
   - Se activa con `?perf=1` en la URL. Sin ese parámetro no se mide ni cambia nada.
   - Sin `useState`: los contadores viven en variables locales del `useEffect` del juego o en refs, y la salida va a consola o al objeto que devuelve `report()`.
-- **Optimización del dibujado** en `components/games/{Asteroids,Tetris,Arkanoid,Snake,Frogger}Game.tsx` y en sus módulos de `components/games/<id>/` (`skins.ts`, `draw.ts`, `sprites.ts`):
+- **Optimización del dibujado de Frogger** en `components/games/FroggerGame.tsx` y `components/games/frogger/skins.ts`:
   - Cachear el fondo estático de cada skin en un canvas offscreen y pintarlo con un solo `drawImage` por frame.
   - Pre-renderizar en un canvas offscreen los sprites con glow (`shadowBlur`) y los sprites de píxeles, y pintarlos con `drawImage` en lugar de recalcularlos en cada frame.
   - Eliminar asignaciones por frame (arrays, objetos y closures nuevos) y trabajo repetido dentro de `draw()` y `update()`.
@@ -26,6 +26,7 @@
 
 **Fuera de alcance (para specs futuros):**
 
+- Optimizar el dibujado de Asteroids, Tetris, Arkanoid y Snake. Reutilizarán `perf/probe.ts` y `perf/spriteCache.ts` con el patrón aplicado en Frogger.
 - Optimizaciones de React: memoizar componentes, estabilizar handlers o pasar el HUD a refs y DOM directo. Se descartó que React sea la causa.
 - Capas CSS: scanlines, viñeta del CRT y glow del mando MK-II. Solo se abrirá un spec nuevo si la medición señala que son el cuello de botella.
 - Cambios en la lógica de los juegos, la puntuación, las colisiones o el mapeo de teclas.
@@ -63,11 +64,11 @@ Se activa solo con `?perf=1` en la URL. Sin ese parámetro, `createPerfProbe` de
 
 ### Archivos que cambian
 
-| Archivo                                                               | Cambio                                                          |
-| --------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `components/games/{Asteroids,Tetris,Arkanoid,Snake,Frogger}Game.tsx`  | Llaman a `probe.frame()` y usan los fondos y sprites cacheados. |
-| `components/games/<id>/skins.ts`, `draw.ts`, `sprites.ts`             | Dibujan vía `bakeSprite`/`getBaked`.                            |
-| `app/games/*/play/page.tsx`, `GamePlayShell.tsx`, `TouchControls.tsx` | **Sin cambios.**                                                |
+| Archivo                                                               | Cambio                                                                 |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `components/games/{Asteroids,Tetris,Arkanoid,Snake,Frogger}Game.tsx`  | Llaman a `probe.frame()`. Solo Frogger usa fondos y sprites cacheados. |
+| `components/games/frogger/skins.ts`                                   | Dibuja vía `bakeSprite`/`getBaked`.                                    |
+| `app/games/*/play/page.tsx`, `GamePlayShell.tsx`, `TouchControls.tsx` | **Sin cambios.**                                                       |
 
 ### Regla de estado de React
 
@@ -91,7 +92,7 @@ Cada paso deja la app funcionando y se puede revisar y commitear por separado. T
    - Medir en escritorio y en móvil, por cada juego y cada skin (`classic`, `neon`, `retro` y los extras): FPS medios, FPS mínimos y p95 del tiempo de frame, durante 60 s.
    - Repetir en `npm run dev` y en producción en al menos Frogger, para saber cuánto pesa el modo dev.
    - Tomar heap snapshots al arrancar y a los 60 s en cada juego.
-   - Anotar los resultados en la tabla "Línea base" de este spec. Esa tabla fija el orden de los pasos 3–7 y confirma o descarta la hipótesis de `shadowBlur` y de `pixelSprite`.
+   - Anotar los resultados en la tabla "Línea base" de este spec. Esa tabla confirma o descarta la hipótesis de `shadowBlur` y de `pixelSprite`.
    - Los resultados deciden si hay fuga real o solo presión del GC.
    - _Verificación:_ la app se comporta igual sin `?perf=1` y la tabla está completa.
 
@@ -105,30 +106,13 @@ Cada paso deja la app funcionando y se puede revisar y commitear por separado. T
    - Quitar las asignaciones por frame del HUD y los closures de `forEach`.
    - Cambiar de skin en caliente no reinicia la partida.
    - _Verificación:_ medir con la sonda, comparar capturas antes/después de cada skin y comprobar que el heap se estabiliza a los 60 s.
-   - Si el heap sigue creciendo, aislar y corregir la causa (listeners, imágenes u objetos sin liberar en el cleanup del efecto) antes de seguir con los demás juegos.
-
-4. **Arkanoid.** `ArkanoidGame.tsx`, `arkanoid/skins.ts` y `arkanoid/sprites.ts`, con los mismos criterios de verificación que Frogger. Es el que tiene más usos de `shadowBlur` y gradientes.
-
-5. **Asteroids.** `AsteroidsGame.tsx` y `asteroids/skins.ts`.
-
-6. **Snake.** `SnakeGame.tsx`, `snake/skins.ts` y `snake/sprites.ts`.
-
-7. **Tetris.** `TetrisGame.tsx`, `tetris/skins.ts` y `tetris/draw.ts`, incluido el canvas de la siguiente pieza (`drawNext`).
-
-8. **Verificación final.**
-   - Repetir la medición del paso 1 y completar la columna "Después" de la tabla.
-   - Comprobar el invariante HUD con React Profiler: 30 s de juego sin cambios de score, vidas, nivel ni pausa y 0 renders del árbol de React.
-   - Comparar capturas de cada skin de cada juego contra las del paso 1.
-   - Pasar `npm run lint`, `npm run format:check` y `npm run build`.
-   - Cambiar el estado del spec a `Implementado`.
-
-> Los pasos 3–7 pueden reordenarse según la línea base del paso 1: se empieza por el juego y skin con peor rendimiento. Si tras el paso 3 el rendimiento ya cumple los criterios en algún juego, su paso se reduce a verificar.
+   - Si el heap sigue creciendo, aislar y corregir la causa (listeners, imágenes u objetos sin liberar en el cleanup del efecto) antes de dar el paso por terminado.
 
 ---
 
 ## Criterios de aceptación
 
-Las mediciones se hacen en build de producción, con `?perf=1`, durante 60 s de partida, en cada juego y en cada skin.
+Las mediciones se hacen en build de producción, con `?perf=1`, durante 60 s de partida, en Frogger y en cada skin (la línea base abarca los 5 juegos).
 
 **Medición y línea base**
 
@@ -138,21 +122,21 @@ Las mediciones se hacen en build de producción, con `?perf=1`, durante 60 s de 
 
 **Rendimiento (después de optimizar)**
 
-- [ ] Escritorio: FPS medios ≥ 58 y p95 del tiempo de frame ≤ 20 ms en los 5 juegos y todos sus skins.
-- [ ] Móvil: FPS medios ≥ 50 y p95 ≤ 25 ms en los 5 juegos y todos sus skins.
-- [ ] La columna "Después" de la tabla es mejor que la línea base en cada fila.
+- [ ] Escritorio: FPS medios ≥ 58 y p95 del tiempo de frame ≤ 20 ms en Frogger y todos sus skins.
+- [ ] Móvil: FPS medios ≥ 50 y p95 ≤ 25 ms en Frogger y todos sus skins.
+- [ ] La columna "Después" de la tabla es mejor que la línea base en cada fila de Frogger.
 
 **Memoria**
 
-- [ ] Heap a los 60 s ≤ 110 % del heap a los 20 s en cada juego, con un GC forzado antes de cada snapshot.
+- [ ] Heap a los 60 s ≤ 110 % del heap a los 20 s en Frogger, con un GC forzado antes de cada snapshot.
 - [ ] Reiniciar la partida 5 veces seguidas con "JUGAR DE NUEVO" no deja el heap por encima de 120 % del de la primera partida.
 - [ ] Cambiar de skin 10 veces seguidas no hace crecer el heap más de un 10 %: la caché de sprites está acotada.
 
 **Sin cambios de comportamiento ni de aspecto**
 
-- [ ] Las capturas de cada skin de cada juego, antes y después, son visualmente idénticas.
+- [ ] Las capturas de cada skin de Frogger, antes y después, son visualmente idénticas.
 - [ ] Cambiar de skin durante la partida no reinicia la partida ni pierde el score.
-- [ ] Puntuación, colisiones, niveles y controles se comportan igual que antes, con una partida manual en cada juego.
+- [ ] Puntuación, colisiones, niveles y controles se comportan igual que antes, con una partida manual en Frogger.
 - [ ] Pausa, "FIN", fin de partida y guardado de score siguen funcionando.
 
 **Invariante HUD y estado de React**
@@ -175,7 +159,7 @@ Las mediciones se hacen en build de producción, con `?perf=1`, durante 60 s de 
 - **Medir antes de optimizar.** No se conoce todavía la causa del crecimiento de memoria, ni si el bajón depende del skin o de `dev`/producción. El paso 1 fija una línea base que decide el orden de los pasos 3–7 y el criterio de éxito.
 - **Caché en canvas offscreen en lugar de quitar efectos.** Pre-renderizar fondos y sprites con glow conserva el aspecto de los skins y mueve el coste de cada frame a una sola vez. Quitar o reducir `shadowBlur` habría sido más simple, pero cambia el aspecto.
 - **La sonda de medición se activa con `?perf=1`.** Sin el parámetro es un no-op. Así no pesa en producción y no necesita estado de React, un panel ni una dependencia nueva.
-- **Un juego por paso, empezando por Frogger.** Es el caso reportado y el que más información da. Cada diff es revisable y reversible por separado. Si el heap no se estabiliza en el paso 3, se resuelve la causa antes de replicar el patrón en los otros cuatro.
+- **Solo Frogger en este spec.** Es el caso reportado y el que más información da. Los otros cuatro juegos se optimizarán en specs propios, replicando el patrón una vez comprobado que el heap de Frogger se estabiliza.
 - **Cero estado de React nuevo.** Todo lo nuevo vive en variables locales del efecto, refs o un `Map` a nivel de módulo, y nada se lee desde el JSX.
 - **Invariante HUD verificado, no construido.** Los 5 juegos ya llaman a sus callbacks solo cuando el valor cambia. El spec lo fija como criterio medible con React Profiler, para que ninguna optimización lo rompa.
 - **Umbrales de rendimiento:** ≥ 58 FPS en escritorio y ≥ 50 en móvil, con p95 del frame ≤ 20 ms y ≤ 25 ms respectivamente.
@@ -207,7 +191,7 @@ Las mediciones se hacen en build de producción, con `?perf=1`, durante 60 s de 
 
 ## Línea base
 
-> Se completa en el paso 1 y la columna "Después" en el paso 8. Escritorio y móvil por separado; FPS medios / FPS mínimos / p95 del frame (ms).
+> Se completa en el paso 1 y la columna "Después" tras medir Frogger optimizado. Escritorio y móvil por separado; FPS medios / FPS mínimos / p95 del frame (ms).
 
 | Juego       | Skin | Antes (escritorio) | Antes (móvil) | Después (escritorio) | Después (móvil) |
 | ----------- | ---- | ------------------ | ------------- | -------------------- | --------------- |
