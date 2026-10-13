@@ -72,24 +72,24 @@ interface LaneDef {
   type: Entity['type'];
   width: number; // celdas, igual para todas las entidades del carril
   count: number;
-  speed: number; // px/frame (a 60 fps) en el nivel 1
+  speed: number; // px/frame (a 60 fps) en el nivel 1 (≈ 0,75–3 celdas/s)
   dir: 1 | -1;
 }
 
 const LANE_DEFS: LaneDef[] = [
   // Río (filas 1–6)
-  { row: 1, type: 'log', width: 3, count: 3, speed: 3, dir: -1 },
-  { row: 2, type: 'turtle', width: 3, count: 3, speed: 2.5, dir: -1 },
-  { row: 3, type: 'log', width: 2, count: 4, speed: 1.8, dir: 1 },
-  { row: 4, type: 'log', width: 4, count: 2, speed: 2, dir: 1 },
-  { row: 5, type: 'turtle', width: 2, count: 4, speed: 1.5, dir: -1 },
-  { row: 6, type: 'log', width: 3, count: 3, speed: 1, dir: 1 },
+  { row: 1, type: 'log', width: 3, count: 3, speed: 1.5, dir: -1 },
+  { row: 2, type: 'turtle', width: 3, count: 3, speed: 1.25, dir: -1 },
+  { row: 3, type: 'log', width: 2, count: 4, speed: 0.9, dir: 1 },
+  { row: 4, type: 'log', width: 4, count: 2, speed: 1, dir: 1 },
+  { row: 5, type: 'turtle', width: 2, count: 4, speed: 0.75, dir: -1 },
+  { row: 6, type: 'log', width: 3, count: 3, speed: 0.5, dir: 1 },
   // Carretera (filas 8–12)
-  { row: 8, type: 'truck', width: 3, count: 2, speed: 4, dir: 1 },
-  { row: 9, type: 'car', width: 1, count: 5, speed: 3, dir: -1 },
-  { row: 10, type: 'car', width: 2, count: 3, speed: 2.5, dir: 1 },
-  { row: 11, type: 'truck', width: 3, count: 3, speed: 2, dir: -1 },
-  { row: 12, type: 'car', width: 1, count: 4, speed: 1.5, dir: 1 },
+  { row: 8, type: 'truck', width: 3, count: 2, speed: 2, dir: 1 },
+  { row: 9, type: 'car', width: 1, count: 5, speed: 1.5, dir: -1 },
+  { row: 10, type: 'car', width: 2, count: 3, speed: 1.25, dir: 1 },
+  { row: 11, type: 'truck', width: 3, count: 3, speed: 1, dir: -1 },
+  { row: 12, type: 'car', width: 1, count: 4, speed: 0.75, dir: 1 },
 ];
 
 /**

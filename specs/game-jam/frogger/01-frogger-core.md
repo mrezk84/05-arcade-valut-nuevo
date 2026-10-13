@@ -1,6 +1,6 @@
 # SPEC — Frogger: integración core del juego
 
-> **Estado:** Aprobado
+> **Estado:** Implementado
 > **Depende de:** 06-games-table-leaderboard-supabase
 > **Fecha:** 2026-05-20
 > **Objetivo:** Integrar Frogger (canvas puro, construido desde cero) como juego jugable en Arcade Vault con ID `frogger`, conectando score, vidas, nivel y game over con el HUD React y la play-page dedicada.
@@ -129,8 +129,8 @@ No se introducen nuevas tablas ni tipos TypeScript — se reutilizan `GameRow` y
    ```
 
 3. **Construir el mapa de carriles** — función `buildLanes(level: number): Lane[]`:
-   - Carriles de carretera (filas 8–12): velocidades entre 1.5 y 4 px/frame a 60 fps (escaladas por nivel); sentidos alternos; entidades precargadas con huecos para que sean atravesables. Todas las entidades de un carril comparten anchura y se reparten a intervalos iguales sobre un recorrido de `COLS + width` celdas, de modo que los huecos se conservan al reentrar.
-   - Carriles de río (filas 1–6): velocidades entre 1 y 3 px/frame; troncos de 2–4 celdas con huecos de al menos 1 celda; grupos de tortugas de 2–3 con ciclo de inmersión de 3 s visible / 1.5 s bajo el agua, avanzado con `entity.phase` (ms) y con desfase distinto por grupo.
+   - Carriles de carretera (filas 8–12): velocidades entre 0.75 y 2 px/frame a 60 fps (escaladas por nivel); sentidos alternos; entidades precargadas con huecos para que sean atravesables. Todas las entidades de un carril comparten anchura y se reparten a intervalos iguales sobre un recorrido de `COLS + width` celdas, de modo que los huecos se conservan al reentrar.
+   - Carriles de río (filas 1–6): velocidades entre 0.5 y 1.5 px/frame; troncos de 2–4 celdas con huecos de al menos 1 celda; grupos de tortugas de 2–3 con ciclo de inmersión de 3 s visible / 1.5 s bajo el agua, avanzado con `entity.phase` (ms) y con desfase distinto por grupo.
    - Cada nivel incrementa todas las velocidades en un 15 %.
      Verificación: al imprimir el array `lanes` en consola, cada carril tiene al menos 2 entidades y los huecos son visibles.
 

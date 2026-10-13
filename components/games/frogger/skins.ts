@@ -61,6 +61,89 @@ function forEachGoal(
 
 // ── classic: the original look (unchanged) ─────────────────────────────────
 
+// Tortuga vista desde arriba, mirando a la izquierda (los carriles de tortugas
+// avanzan hacia la izquierda).
+function classicTurtle(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  submerged?: boolean,
+) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(0.9, 0.9); // deja aire entre tortugas contiguas
+  if (submerged) {
+    ctx.strokeStyle = 'rgba(74,222,128,0.35)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 12, 10, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  // Aletas
+  ctx.fillStyle = '#22c55e';
+  for (const [fx, fy, rot] of [
+    [-8, -11, -0.5],
+    [-8, 11, 0.5],
+    [9, -10, 0.5],
+    [9, 10, -0.5],
+  ]) {
+    ctx.beginPath();
+    ctx.ellipse(fx, fy, 6, 3.2, rot, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Cola y cabeza
+  ctx.beginPath();
+  ctx.moveTo(12, -2.5);
+  ctx.lineTo(18, 0);
+  ctx.lineTo(12, 2.5);
+  ctx.fill();
+  ctx.fillStyle = '#4ade80';
+  ctx.beginPath();
+  ctx.ellipse(-15, 0, 6, 5, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#052e16';
+  for (const ey of [-2.5, 2.5]) {
+    ctx.beginPath();
+    ctx.arc(-17, ey, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Caparazón con placas
+  ctx.fillStyle = '#15803d';
+  ctx.strokeStyle = '#052e16';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 13, 11, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#16a34a';
+  ctx.beginPath();
+  ctx.moveTo(-6, 0);
+  ctx.lineTo(-3, -5);
+  ctx.lineTo(3, -5);
+  ctx.lineTo(6, 0);
+  ctx.lineTo(3, 5);
+  ctx.lineTo(-3, 5);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(-3, -5);
+  ctx.lineTo(-7, -9);
+  ctx.moveTo(3, -5);
+  ctx.lineTo(7, -9);
+  ctx.moveTo(-3, 5);
+  ctx.lineTo(-7, 9);
+  ctx.moveTo(3, 5);
+  ctx.lineTo(7, 9);
+  ctx.moveTo(6, 0);
+  ctx.lineTo(12, 0);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function classicFrog(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -165,25 +248,12 @@ const classic: FroggerSkin = {
       }
       case 'turtle': {
         for (let k = 0; k < e.width; k++) {
-          const cx = x + k * CELL + CELL / 2;
-          const cy = y + CELL / 2;
-          ctx.beginPath();
-          ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-          if (e.submerged) {
-            ctx.strokeStyle = 'rgba(74,222,128,0.35)';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          } else {
-            ctx.fillStyle = '#16a34a';
-            ctx.fill();
-            ctx.strokeStyle = '#14532d';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(cx, cy, 8, 0, Math.PI * 2);
-            ctx.moveTo(cx - 14, cy);
-            ctx.lineTo(cx + 14, cy);
-            ctx.stroke();
-          }
+          classicTurtle(
+            ctx,
+            x + k * CELL + CELL / 2,
+            y + CELL / 2,
+            e.submerged,
+          );
         }
         break;
       }
@@ -434,19 +504,44 @@ const neon: FroggerSkin = {
             ctx.lineWidth = 2;
             ctx.setLineDash([4, 5]);
             ctx.beginPath();
-            ctx.arc(cx, cy, 13, 0, Math.PI * 2);
+            ctx.ellipse(cx, cy, 12, 10, 0, 0, Math.PI * 2);
             ctx.stroke();
             ctx.restore();
           } else {
-            neonShape(ctx, NEON.turtle, 0.16, 10, () =>
-              ctx.arc(cx, cy, 13, 0, Math.PI * 2),
+            // Vista desde arriba, mirando a la izquierda.
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.scale(0.9, 0.9);
+            ctx.translate(-cx, -cy);
+            neonShape(ctx, NEON.turtle, 0.16, 8, () => {
+              ctx.ellipse(cx - 15, cy, 5, 4.5, 0, 0, Math.PI * 2); // cabeza
+              ctx.moveTo(cx + 12, cy - 2);
+              ctx.lineTo(cx + 18, cy);
+              ctx.lineTo(cx + 12, cy + 2); // cola
+            });
+            neonShape(ctx, NEON.turtle, 0.16, 8, () => {
+              ctx.ellipse(cx - 8, cy - 11, 5, 2.6, -0.5, 0, Math.PI * 2);
+              ctx.ellipse(cx - 8, cy + 11, 5, 2.6, 0.5, 0, Math.PI * 2);
+              ctx.ellipse(cx + 9, cy - 10, 5, 2.6, 0.5, 0, Math.PI * 2);
+              ctx.ellipse(cx + 9, cy + 10, 5, 2.6, -0.5, 0, Math.PI * 2);
+            });
+            neonShape(ctx, NEON.turtle, 0.2, 12, () =>
+              ctx.ellipse(cx, cy, 12, 10, 0, 0, Math.PI * 2),
             );
             ctx.save();
             ctx.strokeStyle = NEON.turtle;
-            ctx.lineWidth = 1.5;
+            ctx.globalAlpha = 0.7;
+            ctx.lineWidth = 1.2;
             ctx.beginPath();
-            ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+            ctx.moveTo(cx - 6, cy);
+            ctx.lineTo(cx - 3, cy - 5);
+            ctx.lineTo(cx + 3, cy - 5);
+            ctx.lineTo(cx + 6, cy);
+            ctx.lineTo(cx + 3, cy + 5);
+            ctx.lineTo(cx - 3, cy + 5);
+            ctx.closePath();
             ctx.stroke();
+            ctx.restore();
             ctx.restore();
           }
         }
@@ -557,13 +652,14 @@ const FROG_JUMP = [
 ];
 const FROG_COLOURS = { g: RETRO.green, w: RETRO.white, k: RETRO.road };
 
+// Vista desde arriba, mirando a la izquierda: cabeza (h), aletas y cola (g).
 const TURTLE = [
-  '..rrrr..',
-  '.rryyrr.',
-  'rryrryrr',
-  'rryrryrr',
-  '.rryyrr.',
-  '..rrrr..',
+  '..g..g..',
+  '.grrrrg.',
+  'hhrryrrt',
+  'hhrryrrt',
+  '.grrrrg.',
+  '..g..g..',
 ];
 const TURTLE_SUBMERGED = [
   '..r..r..',
@@ -573,7 +669,13 @@ const TURTLE_SUBMERGED = [
   '........',
   '..r..r..',
 ];
-const TURTLE_COLOURS = { r: RETRO.red, y: RETRO.yellow };
+const TURTLE_COLOURS = {
+  r: RETRO.red,
+  y: RETRO.yellow,
+  g: RETRO.green,
+  h: RETRO.green,
+  t: RETRO.green,
+};
 
 function retroFrog(
   ctx: CanvasRenderingContext2D,
