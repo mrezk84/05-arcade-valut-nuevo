@@ -119,6 +119,7 @@ export const GOAL_WIDTH = 2;
 export const COLLISION_MARGIN = 0.15; // celdas
 export const POINTS_ROW = 10;
 export const POINTS_GOAL = 50;
+export const POINTS_ROUND = 200;
 export const POINTS_TIME_PER_SEC = 10;
 
 const KEY_DIRS: Record<string, Direction> = {
@@ -249,32 +250,50 @@ export default function FroggerGame({
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
 
-    const lanes = buildLanes(1);
+    let lanes = buildLanes(1);
     const frog = newFrog();
     const goals: boolean[] = GOAL_COLS.map(() => false);
     let score = 0;
-    const lives = START_LIVES;
-    const level = 1;
+    let lives = START_LIVES;
+    let level = 1;
     let timeLeft = roundTimeFor(level);
-    let bestRow = ROW_START; // fila más alta alcanzada en esta vida
+    let bestRow = ROW_START; // fila más alta alcanzada en esta ronda
     let pendingDir: Direction | null = null;
-    const gameOver = false;
+    let gameOver = false;
 
     // Últimos valores notificados: los callbacks solo se disparan si cambian.
     let sentScore = score;
     let sentLives = lives;
     let sentLevel = level;
 
-    // Devuelve la rana al inicio y reinicia temporizador y progreso de filas.
+    // Devuelve la rana al inicio y reinicia el temporizador.
     function respawn() {
       Object.assign(frog, newFrog());
       timeLeft = roundTimeFor(level);
-      bestRow = ROW_START;
       pendingDir = null;
     }
 
-    // Paso 7: aquí se gestionará la pérdida de vida. Por ahora solo reaparece.
+    // Ronda completa: +200, nivel siguiente, carriles más rápidos y bocas vacías.
+    function completeRound() {
+      score += POINTS_ROUND;
+      goals.fill(false);
+      bestRow = ROW_START; // las filas vuelven a puntuar en la ronda nueva
+      level += 1;
+      lanes = buildLanes(level);
+      respawn(); // rana al inicio y temporizador del nuevo nivel
+      // onLevelChange se dispara en notify()
+    }
+
+    // Pierde una vida; sin vidas, avisa (vidas 0 y luego game over) y detiene la partida.
     function killFrog() {
+      if (gameOver) return;
+      lives -= 1;
+      notify(); // onLivesChange(lives), y de paso el score pendiente
+      if (lives === 0) {
+        gameOver = true;
+        cbOver.current(score);
+        return;
+      }
       respawn();
     }
 
@@ -290,8 +309,8 @@ export default function FroggerGame({
           return;
         }
         score += POINTS_GOAL + Math.ceil(timeLeft / 1000) * POINTS_TIME_PER_SEC;
-        // Paso 6: si las 5 bocas están ocupadas, completeRound().
-        respawn();
+        if (goals.every(Boolean)) completeRound();
+        else respawn();
       }
     }
 
@@ -373,6 +392,10 @@ export default function FroggerGame({
           frog.row = frog.targetRow;
           frog.animating = false;
           frog.animT = 0;
+          // Fuera del río la rana vuelve a la cuadrícula (en el río viaja con el tronco).
+          if (frog.row < ROW_RIVER_TOP || frog.row > ROW_RIVER_BOT) {
+            frog.col = Math.min(COLS - 1, Math.max(0, Math.round(frog.col)));
+          }
           resolveLanding();
         }
       }
@@ -596,6 +619,7 @@ export default function FroggerGame({
 
       if (!pausedRef.current && !gameOver) update(dt);
       draw();
+      if (gameOver) return; // fin de partida: el loop se detiene tras el último frame
       raf = requestAnimationFrame(frame);
     };
 
