@@ -137,10 +137,10 @@ No se introducen nuevas tablas ni tipos TypeScript — se reutilizan `GameRow` y
 4. **Game loop principal** con `requestAnimationFrame`:
    - `update(dt: number)`:
      - Si `paused`, saltar toda lógica.
-     - Avanzar posición de cada entidad en su carril (`entity.col += (lane.speed / CELL) * lane.dir * dt / 16`; `speed` está en px/frame y `col` en celdas, por eso se divide entre `CELL`); cuando una entidad sale del borde, se reintroduce por el lado opuesto (`col = -entity.width` o `col = COLS`).
+     - Avanzar posición de cada entidad en su carril (`entity.col += (lane.speed / CELL) * lane.dir * dt / 16`; `speed` está en px/frame y `col` en celdas, por eso se divide entre `CELL`); cuando una entidad sale del borde, se reintroduce por el lado opuesto conservando el desbordamiento (`col -= COLS + entity.width` al salir por la derecha, `col += COLS + entity.width` al salir por la izquierda), para que los huecos entre entidades no se desfasen.
      - Si la rana no está animando: comprobar input (`pendingDir`); si hay dirección pendiente, iniciar animación (`animating = true`, `animT = 0`, calcular `targetCol/targetRow`).
      - Si la rana está animando: avanzar `animT += dt`; si `animT >= 120`, completar salto (`col = targetCol`, `row = targetRow`, `animating = false`), resolver lógica de celda destino (detección de muerte/meta/puntuación).
-     - Si la rana está en el río y no animando: aplicar el desplazamiento horizontal de la entidad sobre la que descansa (se verifica con `getSupport(frog, lanes)`).
+     - Si la rana está en el río y no animando: aplicar el desplazamiento horizontal de la entidad sobre la que descansa (se verifica con `getSupport(frog, lanes)`, que se implementa en este paso porque el `update` la necesita; el paso 5 la reutiliza). `getSupport` devuelve `{ lane, entity }` o `null`, y comprueba el centro de la rana (`col + 0.5`).
      - Decrementar temporizador de ronda; si llega a 0, muerte por tiempo.
      - Llamar callbacks de cambio de estado si el valor difiere del anterior.
 
@@ -153,7 +153,7 @@ No se introducen nuevas tablas ni tipos TypeScript — se reutilizan `GameRow` y
 
 5. **Detección de colisiones y soporte**:
    - `checkRoadCollision(frog, lanes)`: itera entidades de carriles de carretera; si `frog.col` está dentro del rango `[entity.col, entity.col + entity.width)` y `frog.row === lane.row`, devuelve `true`.
-   - `getSupport(frog, lanes)`: itera entidades de carriles de río; devuelve la entidad cuyo rango cubre la columna de la rana en el mismo carril, o `null`. Si la entidad es una tortuga con `submerged === true`, devuelve `null` (sin soporte).
+   - `getSupport(frog, lanes)`: itera entidades de carriles de río; devuelve la entidad (con su carril) cuyo rango cubre el centro de la rana en el mismo carril, o `null`. Si la entidad es una tortuga con `submerged === true`, devuelve `null` (sin soporte).
    - `checkGoal(frog, goals)`: si `frog.row === ROW_GOALS`, calcula la boca que corresponde a `frog.col`; si no está ocupada, la marca y suma puntos; si ya estaba ocupada o `frog.col` no es una boca, es muerte.
 
 6. **Gestión de ronda completada** — `completeRound()`:
