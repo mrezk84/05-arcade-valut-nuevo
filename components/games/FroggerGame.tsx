@@ -1,39 +1,50 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import {
+  CANVAS_H,
+  CANVAS_W,
+  CELL,
+  COLS,
+  GOAL_COLS,
+  GOAL_WIDTH,
+  ROW_GOALS,
+  ROW_RIVER_BOT,
+  ROW_RIVER_TOP,
+  ROW_ROAD_BOT,
+  ROW_ROAD_TOP,
+  ROW_START,
+  type Entity,
+} from './frogger/constants';
+import { SKINS, type SkinId } from './frogger/skins';
+
+export {
+  CANVAS_H,
+  CANVAS_W,
+  CELL,
+  COLS,
+  GOAL_COLS,
+  GOAL_WIDTH,
+  ROW_GOALS,
+  ROW_RIVER_BOT,
+  ROW_RIVER_TOP,
+  ROW_ROAD_BOT,
+  ROW_ROAD_TOP,
+  ROW_START,
+};
+export { ROWS, ROW_SAFE_MID } from './frogger/constants';
+export type { Entity } from './frogger/constants';
 
 interface FroggerGameProps {
   paused: boolean;
+  skin: SkinId;
   onScoreChange: (score: number) => void;
   onLivesChange: (lives: number) => void;
   onLevelChange: (level: number) => void;
   onGameOver: (finalScore: number) => void;
 }
 
-export const COLS = 16;
-export const ROWS = 14;
-export const CELL = 40; // px
-export const CANVAS_W = COLS * CELL; // 640 — se escala con CSS al contenedor
-export const CANVAS_H = ROWS * CELL; // 560
-
-// Zonas (índice de fila, 0 = arriba)
-export const ROW_GOALS = 0;
-export const ROW_RIVER_TOP = 1;
-export const ROW_RIVER_BOT = 6;
-export const ROW_SAFE_MID = 7;
-export const ROW_ROAD_TOP = 8;
-export const ROW_ROAD_BOT = 12;
-export const ROW_START = 13;
-
 export type Direction = 'up' | 'down' | 'left' | 'right';
-
-export interface Entity {
-  col: number;
-  width: number;
-  type: 'car' | 'truck' | 'log' | 'turtle';
-  submerged?: boolean;
-  phase?: number; // solo tortugas: ms transcurridos dentro del ciclo de inmersión
-}
 
 export interface Lane {
   row: number;
@@ -114,8 +125,6 @@ export const START_LIVES = 3;
 export const ROUND_TIME_MS = 15000;
 export const ROUND_TIME_MIN_MS = 8000;
 export const ROUND_TIME_STEP_MS = 1000; // se resta por nivel superado
-export const GOAL_COLS = [1, 4, 7, 10, 13]; // columna inicial de cada boca (2 celdas)
-export const GOAL_WIDTH = 2;
 export const COLLISION_MARGIN = 0.15; // celdas
 export const POINTS_ROW = 10;
 export const POINTS_GOAL = 50;
@@ -216,6 +225,7 @@ function newFrog(): Frog {
 
 export default function FroggerGame({
   paused,
+  skin,
   onScoreChange,
   onLivesChange,
   onLevelChange,
@@ -225,6 +235,8 @@ export default function FroggerGame({
 
   // Refs so the game loop always reads the latest prop values without re-running the effect
   const pausedRef = useRef(paused);
+  // Read inside the loop so switching skins never restarts the game
+  const skinRef = useRef(skin);
   const cbScore = useRef(onScoreChange);
   const cbLives = useRef(onLivesChange);
   const cbLevel = useRef(onLevelChange);
@@ -233,6 +245,9 @@ export default function FroggerGame({
   useEffect(() => {
     pausedRef.current = paused;
   }, [paused]);
+  useEffect(() => {
+    skinRef.current = skin;
+  }, [skin]);
   useEffect(() => {
     cbScore.current = onScoreChange;
   }, [onScoreChange]);
@@ -408,176 +423,14 @@ export default function FroggerGame({
       notify();
     }
 
-    function drawBackground() {
-      const zones: [number, number, string][] = [
-        [ROW_GOALS, ROW_GOALS, '#0a3d1a'],
-        [ROW_RIVER_TOP, ROW_RIVER_BOT, '#0a1f4d'],
-        [ROW_SAFE_MID, ROW_SAFE_MID, '#14532d'],
-        [ROW_ROAD_TOP, ROW_ROAD_BOT, '#0b0b10'],
-        [ROW_START, ROW_START, '#14532d'],
-      ];
-      for (const [from, to, color] of zones) {
-        ctx.fillStyle = color;
-        ctx.fillRect(0, from * CELL, CANVAS_W, (to - from + 1) * CELL);
-      }
-      // Marcas de carril en la carretera.
-      ctx.fillStyle = 'rgba(255,255,255,0.18)';
-      for (let r = ROW_ROAD_TOP; r < ROW_ROAD_BOT; r++) {
-        for (let x = 0; x < CANVAS_W; x += CELL * 2) {
-          ctx.fillRect(x + 8, (r + 1) * CELL - 1, CELL - 16, 2);
-        }
-      }
-    }
-
-    function drawGoals() {
-      GOAL_COLS.forEach((col, i) => {
-        const x = col * CELL;
-        const y = 18;
-        const w = GOAL_WIDTH * CELL;
-        const h = CELL - 18;
-        ctx.fillStyle = '#4ade80';
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = '#fbbf24';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
-        if (goals[i]) drawFrogShape(x + w / 2, y + h / 2, 0.6, false);
-      });
-    }
-
-    function drawEntity(e: Entity, row: number) {
-      const x = e.col * CELL;
-      const y = row * CELL;
-      const w = e.width * CELL;
-      switch (e.type) {
-        case 'car': {
-          ctx.fillStyle = e.width % 2 ? '#ef4444' : '#facc15';
-          ctx.fillRect(x + 2, y + 6, w - 4, CELL - 12);
-          ctx.fillStyle = '#e5e7eb';
-          ctx.fillRect(x + w * 0.3, y + 10, w * 0.4, CELL - 20);
-          ctx.fillStyle = '#111827';
-          for (const wx of [x + 10, x + w - 10]) {
-            ctx.beginPath();
-            ctx.arc(wx, y + 6, 4, 0, Math.PI * 2);
-            ctx.arc(wx, y + CELL - 6, 4, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          break;
-        }
-        case 'truck': {
-          ctx.fillStyle = '#9ca3af';
-          ctx.fillRect(x + 2, y + 5, w - 4, CELL - 10);
-          ctx.fillStyle = '#3b82f6';
-          ctx.fillRect(x + w - CELL * 0.7, y + 5, CELL * 0.7 - 2, CELL - 10);
-          ctx.fillStyle = '#111827';
-          for (let k = 0; k < e.width; k++) {
-            ctx.beginPath();
-            ctx.arc(x + k * CELL + 12, y + 5, 4, 0, Math.PI * 2);
-            ctx.arc(x + k * CELL + 12, y + CELL - 5, 4, 0, Math.PI * 2);
-            ctx.fill();
-          }
-          break;
-        }
-        case 'log': {
-          ctx.fillStyle = '#92400e';
-          ctx.fillRect(x + 1, y + 6, w - 2, CELL - 12);
-          ctx.strokeStyle = '#78350f';
-          ctx.lineWidth = 2;
-          for (let k = 12; k < w - 6; k += 16) {
-            ctx.beginPath();
-            ctx.moveTo(x + k, y + 9);
-            ctx.lineTo(x + k, y + CELL - 9);
-            ctx.stroke();
-          }
-          break;
-        }
-        case 'turtle': {
-          for (let k = 0; k < e.width; k++) {
-            const cx = x + k * CELL + CELL / 2;
-            const cy = y + CELL / 2;
-            ctx.beginPath();
-            ctx.arc(cx, cy, 14, 0, Math.PI * 2);
-            if (e.submerged) {
-              ctx.strokeStyle = 'rgba(74,222,128,0.35)';
-              ctx.lineWidth = 2;
-              ctx.stroke();
-            } else {
-              ctx.fillStyle = '#16a34a';
-              ctx.fill();
-              ctx.strokeStyle = '#14532d';
-              ctx.lineWidth = 2;
-              ctx.beginPath();
-              ctx.arc(cx, cy, 8, 0, Math.PI * 2);
-              ctx.moveTo(cx - 14, cy);
-              ctx.lineTo(cx + 14, cy);
-              ctx.stroke();
-            }
-          }
-          break;
-        }
-      }
-    }
-
-    function drawFrogShape(
-      cx: number,
-      cy: number,
-      scale: number,
-      jump: boolean,
-    ) {
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.scale(scale, scale);
-      ctx.fillStyle = '#22c55e';
-      if (jump) {
-        // Patas extendidas durante el salto.
-        ctx.fillRect(-18, -12, 8, 6);
-        ctx.fillRect(10, -12, 8, 6);
-        ctx.fillRect(-18, 6, 8, 6);
-        ctx.fillRect(10, 6, 8, 6);
-      }
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 14, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
-      for (const ex of [-6, 6]) {
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(ex, -8, 4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#000';
-        ctx.beginPath();
-        ctx.arc(ex, -8, 1.8, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    function drawHud() {
-      const total = roundTimeFor(level);
-      const ratio = Math.max(0, Math.min(1, timeLeft / total));
-      ctx.fillStyle =
-        ratio > 0.5 ? '#22c55e' : ratio > 0.25 ? '#facc15' : '#ef4444';
-      ctx.fillRect(0, 0, CANVAS_W * ratio, 5);
-
-      ctx.fillStyle = '#fff';
-      ctx.font = '14px monospace';
-      ctx.textBaseline = 'alphabetic';
-      ctx.textAlign = 'left';
-      ctx.fillText(`SCORE ${score}`, 8, 16);
-      ctx.textAlign = 'center';
-      ctx.fillText(`NIVEL ${level}`, CANVAS_W / 2, 16);
-      ctx.fillStyle = '#22c55e';
-      for (let i = 0; i < lives; i++) {
-        ctx.beginPath();
-        ctx.arc(CANVAS_W - 14 - i * 20, 10, 6, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
     function draw() {
-      drawBackground();
+      // Visual only: the skin never touches the game state
+      const S = SKINS[skinRef.current] ?? SKINS.classic;
+      S.drawBackground(ctx);
       for (const lane of lanes) {
-        for (const e of lane.entities) drawEntity(e, lane.row);
+        for (const e of lane.entities) S.drawEntity(ctx, e, lane.row);
       }
-      drawGoals();
+      S.drawGoals(ctx, goals);
 
       let fx = frog.col;
       let fy = frog.row;
@@ -586,13 +439,20 @@ export default function FroggerGame({
         fx += (frog.targetCol - frog.col) * t;
         fy += (frog.targetRow - frog.row) * t;
       }
-      drawFrogShape(
+      S.drawFrog(
+        ctx,
         fx * CELL + CELL / 2,
         fy * CELL + CELL / 2,
         1,
         frog.animating,
       );
-      drawHud();
+      S.drawHud(ctx, {
+        score,
+        level,
+        lives,
+        timeRatio: Math.max(0, Math.min(1, timeLeft / roundTimeFor(level))),
+      });
+      S.drawOverlay?.(ctx);
     }
 
     function onKeyDown(e: KeyboardEvent) {

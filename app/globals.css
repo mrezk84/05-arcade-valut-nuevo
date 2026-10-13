@@ -1158,6 +1158,11 @@ a {
     width: 100%;
     aspect-ratio: 4 / 3;
   }
+  /* Frogger: 640×560 canvas. Its own 8:7 screen fills the width instead of pillarboxing
+     inside 4:3, so the HUD it draws (score, level, lives, timer) stays legible */
+  .av-player--touch:has(#frogger-skin) .crt-screen {
+    aspect-ratio: 8 / 7;
+  }
   /* Tetris is a tall board: its CRT takes the free height and the screen fills it (cq units of .crt) */
   .av-player--touch:has(.tetris-stage) {
     grid-template-rows: minmax(0, 1fr) auto;
