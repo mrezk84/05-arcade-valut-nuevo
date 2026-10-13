@@ -12,7 +12,7 @@
 **In:**
 
 - INSERT SQL para añadir la fila `frogger` a la tabla `games` en Supabase.
-- Crear `components/games/FroggerGame.tsx` — componente React `"use client"` que encapsula el canvas principal (480 × 640 px). Acepta props: `paused`, `onScoreChange`, `onLivesChange`, `onLevelChange`, `onGameOver`.
+- Crear `components/games/FroggerGame.tsx` — componente React `"use client"` que encapsula el canvas principal (640 × 560 px). Acepta props: `paused`, `onScoreChange`, `onLivesChange`, `onLevelChange`, `onGameOver`.
 - Game loop construido desde cero en el componente: cuadrícula de 16 columnas × 14 filas de 40 × 40 px. El mapa vertical se divide en tres zonas fijas: zona segura inferior (fila 13 — base de inicio), zona de carretera (filas 12–8, 5 carriles de tráfico), zona de río (filas 7–2, 6 carriles fluviales) y zona de metas (fila 1, 5 bocas destino).
 - Entidades de carretera: coches y camiones de distintas longitudes (1–3 celdas), velocidades y direcciones por carril; se mueven horizontalmente en loop continuo; colisión con la rana es letal.
 - Entidades de río: troncos (longitud 2–4 celdas) y tortugas (grupos de 2–3) por carril; se mueven horizontalmente. La rana sólo sobrevive en el río si está encima de un tronco o tortugas visibles; si cae al agua, muere. Las tortugas pueden sumergirse periódicamente (fase visible → bajo el agua → visible); mientras están bajo el agua no sirven de apoyo.
@@ -34,7 +34,7 @@
 - Controles táctiles o mobile.
 - Animaciones de muerte elaboradas (explosiones, partículas) — se cubre en spec secundario.
 - Power-ups especiales (mosca en la boca destino, cocodrilo disfrazado de tronco) — se cubre en spec secundario.
-- Supabase Auth y RLS — `user_id` se almacena como `null`.
+- Supabase Auth y RLS — la tabla `scores` no tiene `user_id`.
 - Realtime en el leaderboard.
 - Componente genérico `CanvasGame` (YAGNI).
 
@@ -45,7 +45,7 @@
 ### INSERT en tabla `games`
 
 ```sql
-INSERT INTO games (id, title, short, long, cat, cover, color)
+INSERT INTO games (id, title, short, long, cat, cover, color, sort_order)
 VALUES (
   'frogger',
   'FROGGER',
@@ -53,7 +53,8 @@ VALUES (
   'Guía a tu rana a través de una carretera repleta de coches y un río de troncos y tortugas flotantes. Llena las cinco bocas del otro lado para completar la ronda; cada nivel acelera el tráfico y acorta el tiempo. Tres vidas y mucho asfalto por delante.',
   'ARCADE',
   'cover-frogger',
-  'lime'
+  'green',
+  11
 );
 ```
 
@@ -80,7 +81,7 @@ No se introducen nuevas tablas ni tipos TypeScript — se reutilizan `GameRow` y
 ## Implementation plan
 
 1. **INSERT en Supabase** — ejecutar el SQL del data model en el SQL Editor de Supabase.
-   Verificación: la fila `frogger` aparece en el Table Editor; `/games` muestra la card con cover `cover-frogger` y color `lime`.
+   Verificación: la fila `frogger` aparece en el Table Editor; `/games` muestra la card con cover `cover-frogger` y color `green`.
 
 2. **Definir constantes y tipos** dentro de `FroggerGame.tsx`:
 
@@ -100,7 +101,7 @@ No se introducen nuevas tablas ni tipos TypeScript — se reutilizan `GameRow` y
    const ROW_START = 13;
    ```
 
-   Tipos locales (no exportados):
+   Tipos locales (se exportan para poder reutilizarlos y verificarlos):
 
    ```ts
    type Direction = 'up' | 'down' | 'left' | 'right';
@@ -115,6 +116,7 @@ No se introducen nuevas tablas ni tipos TypeScript — se reutilizan `GameRow` y
      width: number;
      type: 'car' | 'truck' | 'log' | 'turtle';
      submerged?: boolean;
+    phase?: number; // solo tortugas: ms dentro del ciclo de inmersión
    }
    interface Frog {
      col: number;
@@ -127,15 +129,15 @@ No se introducen nuevas tablas ni tipos TypeScript — se reutilizan `GameRow` y
    ```
 
 3. **Construir el mapa de carriles** — función `buildLanes(level: number): Lane[]`:
-   - Carriles de carretera (filas 8–12): velocidades entre 1.5 y 4 px/frame (escaladas por nivel); sentidos alternos; entidades precargadas con huecos para que sean atravesables.
-   - Carriles de río (filas 1–6): velocidades entre 1 y 3 px/frame; troncos de 2–4 celdas con huecos de al menos 1 celda; grupos de tortugas de 2–3 con ciclo de inmersión de 3 s visible / 1.5 s bajo el agua.
+   - Carriles de carretera (filas 8–12): velocidades entre 1.5 y 4 px/frame a 60 fps (escaladas por nivel); sentidos alternos; entidades precargadas con huecos para que sean atravesables. Todas las entidades de un carril comparten anchura y se reparten a intervalos iguales sobre un recorrido de `COLS + width` celdas, de modo que los huecos se conservan al reentrar.
+   - Carriles de río (filas 1–6): velocidades entre 1 y 3 px/frame; troncos de 2–4 celdas con huecos de al menos 1 celda; grupos de tortugas de 2–3 con ciclo de inmersión de 3 s visible / 1.5 s bajo el agua, avanzado con `entity.phase` (ms) y con desfase distinto por grupo.
    - Cada nivel incrementa todas las velocidades en un 15 %.
      Verificación: al imprimir el array `lanes` en consola, cada carril tiene al menos 2 entidades y los huecos son visibles.
 
 4. **Game loop principal** con `requestAnimationFrame`:
    - `update(dt: number)`:
      - Si `paused`, saltar toda lógica.
-     - Avanzar posición de cada entidad en su carril (`entity.col += lane.speed * lane.dir * dt / 16`); cuando una entidad sale del borde, se reintroduce por el lado opuesto (`col = -entity.width` o `col = COLS`).
+     - Avanzar posición de cada entidad en su carril (`entity.col += (lane.speed / CELL) * lane.dir * dt / 16`; `speed` está en px/frame y `col` en celdas, por eso se divide entre `CELL`); cuando una entidad sale del borde, se reintroduce por el lado opuesto (`col = -entity.width` o `col = COLS`).
      - Si la rana no está animando: comprobar input (`pendingDir`); si hay dirección pendiente, iniciar animación (`animating = true`, `animT = 0`, calcular `targetCol/targetRow`).
      - Si la rana está animando: avanzar `animT += dt`; si `animT >= 120`, completar salto (`col = targetCol`, `row = targetRow`, `animating = false`), resolver lógica de celda destino (detección de muerte/meta/puntuación).
      - Si la rana está en el río y no animando: aplicar el desplazamiento horizontal de la entidad sobre la que descansa (se verifica con `getSupport(frog, lanes)`).
@@ -172,7 +174,7 @@ No se introducen nuevas tablas ni tipos TypeScript — se reutilizan `GameRow` y
    - Estado local: `score`, `lives` (inicial `3`), `level`, `paused`, `over`, `name`, `saved`, `gameKey`.
    - Pasa `paused` y los cuatro callbacks a `FroggerGame`.
    - Reutiliza el layout visual de la plataforma (HUD React + CRT + modal game over), igual que las play-pages de Asteroids, Tetris, Arkanoid, Snake y Space Invaders.
-   - Modal game over: pre-rellena nombre desde `localStorage.getItem('av_player_name')`; al confirmar, guarda en `localStorage` e inserta en Supabase `{ game_id: 'frogger', player_name: name, score, user_id: null }`.
+   - Modal game over: pre-rellena nombre desde `localStorage.getItem('av_player_name')`; al confirmar, guarda en `localStorage` e inserta en Supabase `{ game_id: 'frogger', name, score }` (esquema real de `scores`: sin `user_id`).
    - Botón de guardar se deshabilita tras el primer envío.
    - Botón "JUGAR DE NUEVO" incrementa `gameKey` para remontar `FroggerGame`.
      Verificación: el HUD React refleja score, vidas y nivel en tiempo real.
@@ -184,7 +186,7 @@ No se introducen nuevas tablas ni tipos TypeScript — se reutilizan `GameRow` y
 ## Acceptance criteria
 
 - [ ] La fila `frogger` existe en la tabla `games` de Supabase con los valores del data model.
-- [ ] La card de Frogger aparece en `/games` con cover `cover-frogger` y color `lime`.
+- [ ] La card de Frogger aparece en `/games` con cover `cover-frogger` y color `green`.
 - [ ] La ruta `/games/frogger/play` carga sin errores de SSR ni de TypeScript.
 - [ ] El canvas (640 × 560) se renderiza con las tres zonas visualmente diferenciadas (carretera, río, zonas seguras, bocas destino).
 - [ ] La rana aparece centrada en la fila de inicio al cargar la partida.
