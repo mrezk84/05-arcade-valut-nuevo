@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { createPerfProbe } from './perf/probe';
 import {
   CANVAS_H,
   CANVAS_W,
@@ -265,6 +266,7 @@ export default function FroggerGame({
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
 
+    const probe = createPerfProbe('frogger', skinRef.current);
     let lanes = buildLanes(1);
     const frog = newFrog();
     const goals: boolean[] = GOAL_COLS.map(() => false);
@@ -423,6 +425,9 @@ export default function FroggerGame({
       notify();
     }
 
+    // Objeto reutilizado en cada frame (sin asignaciones en draw)
+    const hud = { score: 0, level: 1, lives: 0, timeRatio: 1 };
+
     function draw() {
       // Visual only: the skin never touches the game state
       const S = SKINS[skinRef.current] ?? SKINS.classic;
@@ -446,12 +451,11 @@ export default function FroggerGame({
         1,
         frog.animating,
       );
-      S.drawHud(ctx, {
-        score,
-        level,
-        lives,
-        timeRatio: Math.max(0, Math.min(1, timeLeft / roundTimeFor(level))),
-      });
+      hud.score = score;
+      hud.level = level;
+      hud.lives = lives;
+      hud.timeRatio = Math.max(0, Math.min(1, timeLeft / roundTimeFor(level)));
+      S.drawHud(ctx, hud);
       S.drawOverlay?.(ctx);
     }
 
@@ -468,6 +472,7 @@ export default function FroggerGame({
     let wasPaused = pausedRef.current;
 
     const frame = (now: number) => {
+      probe.frame(now);
       const dt = Math.min(MAX_DT, Math.max(0, now - last));
       last = now;
 
