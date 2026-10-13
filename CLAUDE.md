@@ -52,7 +52,9 @@ Project skills live in `.agents/skills/` (mirrored in `.claude/skills/`; version
 - `/add-game` — **custom skill**. Generates the spec to integrate a playable canvas game plus its leaderboard (reference folder from `references/started-games/` or a new game). It only writes the spec in `specs/NN-<id>-game.md`; implementation is done afterwards with `/spec-impl`. Its technical contract is in `.agents/skills/add-game/reference/integration.md`.
 - `/supabase` and `/supabase-postgres-best-practices` — load before any database, RLS, migration or `@supabase/ssr` work.
 
-Typical flow to add a game: `game-planner` → `/add-game <ref>` → review spec → `/spec-impl specs/NN-<id>-game.md`.
+- `/spec-impl-game` — **custom skill**. Same as `/spec-impl` (it delegates to `.agents/skills/spec-impl/SKILL.md`) but for game specs: once the implementation is done it launches, one after the other (never in parallel), `skin-designer` and then `mobile-porter` on the implemented game.
+
+Typical flow to add a game: `game-planner` → `/add-game <ref>` → review spec → `/spec-impl-game specs/NN-<id>-game.md` (implementation, then skins and mobile). Use plain `/spec-impl` if you only want the implementation.
 
 ## Agents
 
