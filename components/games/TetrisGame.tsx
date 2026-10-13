@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { createPerfProbe } from './perf/probe';
 import {
   type Piece,
   createBoard,
@@ -72,6 +73,7 @@ export default function TetrisGame({
   useEffect(() => {
     const ctx = canvasRef.current!.getContext('2d')!;
     const nextCtx = nextCanvasRef.current!.getContext('2d')!;
+    const probe = createPerfProbe('tetris', skinRef.current);
 
     let board!: number[][], current!: Piece, next!: Piece;
     let score!: number, lines!: number, level!: number, lives!: number;
@@ -165,6 +167,7 @@ export default function TetrisGame({
     }
 
     function loop(ts: number) {
+      probe.frame(ts);
       // Platform pause: the loop keeps running, but no fall accumulates.
       // lastTime is refreshed every frame and dt is capped, so resuming
       // (or returning to the tab) never releases several drops at once.

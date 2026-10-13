@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { createPerfProbe } from './perf/probe';
 import { SKINS, type AsteroidsSkin, type SkinId } from './asteroids/skins';
 
 interface AsteroidsGameProps {
@@ -55,6 +56,7 @@ export default function AsteroidsGame({
     const ctx = canvas.getContext('2d')!;
     const W = 800;
     const H = 600;
+    const probe = createPerfProbe('asteroids', skinRef.current);
 
     // ── Skin (visual only; refreshed every frame from skinRef) ──────────────
     let S: AsteroidsSkin = SKINS[skinRef.current];
@@ -527,6 +529,7 @@ export default function AsteroidsGame({
     let lastTime: number | null = null;
 
     function loop(ts: number) {
+      probe.frame(ts);
       const dt = lastTime === null ? 0 : Math.min((ts - lastTime) / 1000, 0.05);
       lastTime = ts;
 

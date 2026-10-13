@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { createPerfProbe } from './perf/probe';
 import {
   CELL,
   COLS,
@@ -107,6 +108,7 @@ export default function SnakeGame({
   useEffect(() => {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
+    const probe = createPerfProbe('snake', skinRef.current);
     let cancelled = false;
 
     const green =
@@ -235,6 +237,7 @@ export default function SnakeGame({
         let wasPaused = pausedRef.current;
 
         const frame = (now: number) => {
+          probe.frame(now);
           const dt = Math.min(MAX_DT, Math.max(0, now - last));
           last = now;
 

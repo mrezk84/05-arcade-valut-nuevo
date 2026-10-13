@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { createPerfProbe } from './perf/probe';
 import { LEVELS } from './arkanoid/levels';
 import {
   EXPLOSION_DURATION,
@@ -100,6 +101,7 @@ export default function ArkanoidGame({
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
     const keys = keysRef.current;
+    const probe = createPerfProbe('arkanoid', skinRef.current);
     let cancelled = false;
     let raf = 0;
     let teardown: (() => void) | null = null;
@@ -342,6 +344,7 @@ export default function ArkanoidGame({
         // ── Loop ───────────────────────────────────────────────────────────────
         let lastTime: number | null = null;
         function loop(timestamp: number) {
+          probe.frame(timestamp);
           if (lastTime === null) lastTime = timestamp;
           const dt = Math.min((timestamp - lastTime) / 1000, MAX_DT);
           lastTime = timestamp;

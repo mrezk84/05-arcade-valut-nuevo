@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { createPerfProbe } from './perf/probe';
 import {
   CANVAS_H,
   CANVAS_W,
@@ -265,6 +266,7 @@ export default function FroggerGame({
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
 
+    const probe = createPerfProbe('frogger', skinRef.current);
     let lanes = buildLanes(1);
     const frog = newFrog();
     const goals: boolean[] = GOAL_COLS.map(() => false);
@@ -468,6 +470,7 @@ export default function FroggerGame({
     let wasPaused = pausedRef.current;
 
     const frame = (now: number) => {
+      probe.frame(now);
       const dt = Math.min(MAX_DT, Math.max(0, now - last));
       last = now;
 
