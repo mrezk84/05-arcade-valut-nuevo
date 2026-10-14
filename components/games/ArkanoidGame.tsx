@@ -9,6 +9,7 @@ import {
   type BlockColor,
 } from './arkanoid/sprites';
 import { SKINS, type ArkanoidSkin, type SkinId } from './arkanoid/skins';
+import { createHudRenderer } from './arkanoid/hud';
 
 interface ArkanoidGameProps {
   paused: boolean;
@@ -107,11 +108,13 @@ export default function ArkanoidGame({
     let teardown: (() => void) | null = null;
 
     // ── Skin (visual only; refreshed every frame from skinRef) ──────────────
-    let S: ArkanoidSkin = SKINS[skinRef.current];
+    let skinId: SkinId = skinRef.current;
+    let S: ArkanoidSkin = SKINS[skinId];
     // Press Start 2P family injected by next/font on <html>; empty if missing
     const pixelFamily = getComputedStyle(canvas)
       .getPropertyValue('--font-press-start')
       .trim();
+    const drawHud = createHudRenderer(W, pixelFamily);
 
     const bounceSound = new Audio(`${SOUNDS_PATH}/ball-bounce.mp3`);
     const breakSound = new Audio(`${SOUNDS_PATH}/break-sound.mp3`);
@@ -281,8 +284,14 @@ export default function ArkanoidGame({
             break;
           }
 
-          for (const exp of explosions) exp.elapsed += dt * 1000;
-          explosions = explosions.filter((e) => e.elapsed < EXPLOSION_DURATION);
+          // In-place compaction: no new array or closure per frame
+          let alive = 0;
+          for (let i = 0; i < explosions.length; i++) {
+            const exp = explosions[i];
+            exp.elapsed += dt * 1000;
+            if (exp.elapsed < EXPLOSION_DURATION) explosions[alive++] = exp;
+          }
+          explosions.length = alive;
 
           if (ball.y > H) {
             lives--;
@@ -298,9 +307,7 @@ export default function ArkanoidGame({
         // ── Draw ───────────────────────────────────────────────────────────────
         function draw() {
           ctx.shadowBlur = 0;
-          ctx.fillStyle = S.bg;
-          ctx.fillRect(0, 0, W, H);
-          S.drawBackdrop?.(ctx, W, H);
+          S.drawBackground(ctx, W, H);
           for (const b of blocks) {
             if (b.alive) S.drawBlock(ctx, b.color, b.x, b.y, b.w, b.h);
           }
@@ -319,24 +326,7 @@ export default function ArkanoidGame({
           S.drawBall(ctx, ball.x, ball.y, ball.w, ball.h);
 
           if (gameState === 'playing') {
-            ctx.fillStyle = S.hudText;
-            ctx.font = S.hudFont(pixelFamily);
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'top';
-            if (S.hudGlow) {
-              ctx.shadowBlur = S.hudGlow;
-              ctx.shadowColor = S.hudText;
-            }
-            ctx.fillText(`Score: ${score}`, 10, 10);
-            ctx.textAlign = 'center';
-            ctx.fillText(`Nivel: ${currentLevel}`, W / 2, 10);
-            ctx.shadowBlur = 0;
-            const ballSize = 16;
-            const ballSpacing = 4;
-            for (let i = 0; i < lives; i++) {
-              const bx = W - 10 - (lives - i) * (ballSize + ballSpacing);
-              S.drawBall(ctx, bx, 10, ballSize, ballSize);
-            }
+            drawHud(ctx, skinId, S, score, currentLevel, lives);
           }
           S.drawOverlay?.(ctx, W, H);
         }
@@ -353,7 +343,8 @@ export default function ArkanoidGame({
             update(dt);
             emitChanges();
           }
-          S = SKINS[skinRef.current];
+          skinId = skinRef.current;
+          S = SKINS[skinId];
           draw();
 
           raf = requestAnimationFrame(loop);

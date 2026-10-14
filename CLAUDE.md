@@ -64,6 +64,8 @@ Typical flow to add a game: `game-planner` → `/add-game <ref>` → review spec
 
 - `mobile-porter` (`.claude/agents/mobile-porter.md`) — works on **one game per invocation** (`@mobile-porter <game-id>`): ports it to mobile following SPEC 10 (`touch` config in its play-page, mobile layout, landscape) without changing desktop. Never touches the game logic, `TouchControls.tsx` or `GamePlayShell.tsx`. Its memory is `references/game-mobile-status.md`; it only updates the row of the game it worked on.
 
+- `game-performance-booster` (`.claude/agents/game-performance-booster.md`) — works on **one game per invocation** (`@game-performance-booster <game-id>`): audits and fixes canvas performance following SPEC 12 (`?perf=1` probe, offscreen sprite/background cache via `components/games/perf/`, no per-frame allocations, stable memory) without changing the look, the game logic or adding React state. It may edit the game's canvas component, its helper folder `components/games/<id>/` and its `app/games/<id>/play/page.tsx`; never `GamePlayShell.tsx`, `TouchControls.tsx` or other games. It has no persistent memory: each run audits and fixes the current code.
+
 ## Architecture
 
 Uses Next.js **App Router** exclusively — no `pages/` directory.

@@ -14,8 +14,17 @@ import {
   fallInterval,
 } from './tetris/board';
 import { LINE_SCORES } from './tetris/constants';
-import { draw, drawNext } from './tetris/draw';
+import { draw, drawNext, renderBoardLayer } from './tetris/draw';
 import { SKINS, type SkinId } from './tetris/skins';
+
+// Keys whose default (page scroll) is blocked; hoisted so keydown allocates nothing
+const PREVENT_KEYS = new Set([
+  'ArrowLeft',
+  'ArrowRight',
+  'ArrowUp',
+  'ArrowDown',
+  'Space',
+]);
 
 interface TetrisGameProps {
   paused: boolean;
@@ -89,6 +98,9 @@ export default function TetrisGame({
       animId!: number;
     // Skin the "next" canvas was last drawn with; it is only redrawn on spawn or skin change
     let nextSkin!: SkinId;
+    // Locked-pieces layer (SPEC 12): redrawn only when the board or the skin changes
+    let boardDirty = true;
+    let boardSkin: SkinId | undefined;
 
     function clearFullLines() {
       const cleared = clearLines(board);
@@ -121,6 +133,7 @@ export default function TetrisGame({
     function lockPiece() {
       merge(board, current);
       clearFullLines();
+      boardDirty = true;
       spawn();
     }
 
@@ -185,13 +198,20 @@ export default function TetrisGame({
         }
       }
       if (gameOver) return;
-      if (skinRef.current !== nextSkin) renderNext();
-      draw(ctx, board, current, SKINS[skinRef.current]);
+      const skinId = skinRef.current;
+      if (skinId !== nextSkin) renderNext();
+      if (boardDirty || skinId !== boardSkin) {
+        renderBoardLayer(board, skinId);
+        boardDirty = false;
+        boardSkin = skinId;
+      }
+      draw(ctx, board, current, skinId);
       animId = requestAnimationFrame(loop);
     }
 
     function init() {
       board = createBoard();
+      boardDirty = true;
       score = 0;
       lines = 0;
       level = 1;
@@ -209,12 +229,7 @@ export default function TetrisGame({
     }
 
     function onKeyDown(e: KeyboardEvent) {
-      if (
-        ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(
-          e.code,
-        )
-      )
-        e.preventDefault();
+      if (PREVENT_KEYS.has(e.code)) e.preventDefault();
       if (pausedRef.current || gameOver) return;
       switch (e.code) {
         case 'ArrowLeft':

@@ -1,3 +1,4 @@
+import { bakeSprite, getBaked } from '../perf/spriteCache';
 import { CELL, COLS, ROWS } from './constants';
 import { FRUIT_NAMES, drawFruit, type FruitName } from './sprites';
 
@@ -46,69 +47,212 @@ function bodyAlpha(i: number, length: number) {
   return 1 - 0.45 * (i / Math.max(1, length - 1));
 }
 
-// Two eye positions on the side the head is facing
-function eyeCenters(hx: number, hy: number, dir: SnakeDir, offset: number) {
+// Two eyes on the side the head is facing (no allocations: called per frame)
+function fillEyes(
+  ctx: CanvasRenderingContext2D,
+  hx: number,
+  hy: number,
+  dx: number,
+  dy: number,
+  offset: number,
+  eye: number,
+  round: boolean,
+) {
   const cx = hx + CELL / 2;
   const cy = hy + CELL / 2;
-  return [-1, 1].map((s) => ({
-    x: cx + dir.dx * offset + -dir.dy * offset * s,
-    y: cy + dir.dy * offset + dir.dx * offset * s,
-  }));
+  for (let s = -1; s <= 1; s += 2) {
+    const x = cx + dx * offset + -dy * offset * s - eye / 2;
+    const y = cy + dy * offset + dx * offset * s - eye / 2;
+    ctx.fillRect(
+      round ? Math.round(x) : x,
+      round ? Math.round(y) : y,
+      eye,
+      eye,
+    );
+  }
+}
+
+// ── Caché de dibujado (SPEC 12) ─────────────────────────────────────────────
+// Tablero, scanlines y sprites con glow o de píxeles se pintan una vez en un
+// canvas offscreen; cada frame hace `drawImage`. Los segmentos del cuerpo se
+// dibujan con `globalAlpha` < 1, así que su sombra y su forma se cachean en
+// capas separadas y se componen en el mismo orden que el dibujado en vivo
+// (sombra → relleno → sombra → trazo), cada una con el alpha del segmento.
+
+const BAKE_PAD = CELL; // margen para que el halo del glow no se recorte
+const SPRITE = CELL + BAKE_PAD * 2;
+const SHADOW_SHIFT = 4096; // desplaza la forma fuera del canvas: solo queda su sombra
+
+const FRUIT_INDEX = {} as Record<FruitName, number>;
+for (let i = 0; i < FRUIT_NAMES.length; i++) FRUIT_INDEX[FRUIT_NAMES[i]] = i;
+
+// 0..8 para las 4 direcciones posibles
+function dirCode(dir: SnakeDir) {
+  return (dir.dx + 1) * 3 + dir.dy + 1;
+}
+const codeDx = (code: number) => Math.floor(code / 3) - 1;
+const codeDy = (code: number) => (code % 3) - 1;
+
+type SpriteMap = Map<number, HTMLCanvasElement>;
+
+// Búsqueda rápida por código numérico; la clave de texto solo se arma al construir
+function sprite(
+  fast: SpriteMap,
+  prefix: string,
+  code: number,
+  build: (code: number) => HTMLCanvasElement,
+): HTMLCanvasElement {
+  let s = fast.get(code);
+  if (!s) {
+    s = getBaked(prefix + code, () => build(code));
+    fast.set(code, s);
+  }
+  return s;
+}
+
+// Solo la sombra de `paint` (sin la forma), igual que la dibuja el contexto
+function shadowOnly(
+  b: CanvasRenderingContext2D,
+  color: string,
+  blur: number,
+  paint: (b: CanvasRenderingContext2D) => void,
+) {
+  b.save();
+  b.shadowColor = color;
+  b.shadowBlur = blur;
+  b.shadowOffsetX = SHADOW_SHIFT;
+  b.translate(-SHADOW_SHIFT, 0);
+  paint(b);
+  b.restore();
+}
+
+// Sprite de celda con margen: se pinta en (col, row) desplazado por BAKE_PAD
+function drawCell(
+  ctx: CanvasRenderingContext2D,
+  s: HTMLCanvasElement,
+  col: number,
+  row: number,
+) {
+  ctx.drawImage(s, col * CELL - BAKE_PAD, row * CELL - BAKE_PAD);
+}
+
+function bakedBoard(
+  id: SkinId,
+  paint: (ctx: CanvasRenderingContext2D) => void,
+): (ctx: CanvasRenderingContext2D) => void {
+  let baked: HTMLCanvasElement | null = null;
+  return (ctx) => {
+    baked ??= getBaked(`snake:${id}:bg`, () => bakeSprite(W, H, paint));
+    ctx.drawImage(baked, 0, 0);
+  };
 }
 
 // ── classic: the original look (unchanged) ─────────────────────────────────
 const CLASSIC_BOARD_A = '#07100c';
 const CLASSIC_BOARD_B = '#0a1510';
 const CLASSIC_INSET = 4;
+const CLASSIC_SIZE = CELL - CLASSIC_INSET * 2;
+
+function paintClassicBoard(ctx: CanvasRenderingContext2D) {
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      ctx.fillStyle = (col + row) % 2 === 0 ? CLASSIC_BOARD_A : CLASSIC_BOARD_B;
+      ctx.fillRect(col * CELL, row * CELL, CELL, CELL);
+    }
+  }
+}
+
+const CLASSIC_BODY_SHADOW = 0;
+const CLASSIC_BODY = 1;
+const CLASSIC_HEAD = 10; // + dirCode
+
+// El glow usa el `--green` de la plataforma: la caché se invalida si cambia
+let classicGreen = '';
+let classicPrefix = '';
+const classicFast: SpriteMap = new Map();
+const classicFruitFast: SpriteMap = new Map();
+
+function classicBodyPath(b: CanvasRenderingContext2D) {
+  b.fillStyle = classicGreen;
+  b.beginPath();
+  b.roundRect(
+    BAKE_PAD + CLASSIC_INSET,
+    BAKE_PAD + CLASSIC_INSET,
+    CLASSIC_SIZE,
+    CLASSIC_SIZE,
+    6,
+  );
+  b.fill();
+}
+
+function buildClassic(code: number): HTMLCanvasElement {
+  return bakeSprite(SPRITE, SPRITE, (b) => {
+    if (code === CLASSIC_BODY_SHADOW) {
+      shadowOnly(b, classicGreen, 14, classicBodyPath);
+    } else if (code === CLASSIC_BODY) {
+      classicBodyPath(b);
+    } else {
+      const d = code - CLASSIC_HEAD;
+      b.save();
+      b.shadowColor = classicGreen;
+      b.shadowBlur = 14;
+      b.fillStyle = '#c8ffe4';
+      b.beginPath();
+      b.roundRect(BAKE_PAD + 2, BAKE_PAD + 2, CELL - 4, CELL - 4, 8);
+      b.fill();
+      b.restore();
+      b.fillStyle = '#04110a';
+      fillEyes(b, BAKE_PAD, BAKE_PAD, codeDx(d), codeDy(d), 8, 5, false);
+    }
+  });
+}
 
 const classic: SnakeSkin = {
   name: 'Clásico',
-  drawBoard(ctx) {
-    for (let row = 0; row < ROWS; row++) {
-      for (let col = 0; col < COLS; col++) {
-        ctx.fillStyle =
-          (col + row) % 2 === 0 ? CLASSIC_BOARD_A : CLASSIC_BOARD_B;
-        ctx.fillRect(col * CELL, row * CELL, CELL, CELL);
-      }
-    }
-  },
+  drawBoard: bakedBoard('classic', paintClassicBoard),
   drawSnake(ctx, snake, dir, green) {
-    const size = CELL - CLASSIC_INSET * 2;
-
-    ctx.save();
-    ctx.shadowColor = green;
-    ctx.shadowBlur = 14;
-    ctx.fillStyle = green;
+    if (green !== classicGreen) {
+      classicGreen = green;
+      classicPrefix = `snake:classic:${green}:`;
+      classicFast.clear();
+    }
+    const shadow = sprite(
+      classicFast,
+      classicPrefix,
+      CLASSIC_BODY_SHADOW,
+      buildClassic,
+    );
+    const body = sprite(classicFast, classicPrefix, CLASSIC_BODY, buildClassic);
     for (let i = snake.length - 1; i >= 1; i--) {
       ctx.globalAlpha = bodyAlpha(i, snake.length);
-      ctx.beginPath();
-      ctx.roundRect(
-        snake[i].col * CELL + CLASSIC_INSET,
-        snake[i].row * CELL + CLASSIC_INSET,
-        size,
-        size,
-        6,
-      );
-      ctx.fill();
+      drawCell(ctx, shadow, snake[i].col, snake[i].row);
+      drawCell(ctx, body, snake[i].col, snake[i].row);
     }
-
-    const head = snake[0];
-    const hx = head.col * CELL;
-    const hy = head.row * CELL;
     ctx.globalAlpha = 1;
-    ctx.fillStyle = '#c8ffe4';
-    ctx.beginPath();
-    ctx.roundRect(hx + 2, hy + 2, CELL - 4, CELL - 4, 8);
-    ctx.fill();
-    ctx.restore();
-
-    const eye = 5;
-    ctx.fillStyle = '#04110a';
-    for (const e of eyeCenters(hx, hy, dir, 8)) {
-      ctx.fillRect(e.x - eye / 2, e.y - eye / 2, eye, eye);
-    }
+    drawCell(
+      ctx,
+      sprite(
+        classicFast,
+        classicPrefix,
+        CLASSIC_HEAD + dirCode(dir),
+        buildClassic,
+      ),
+      snake[0].col,
+      snake[0].row,
+    );
   },
-  drawFruit,
+  // Recorte de fruits.png pre-escalado a una celda (mismo desplazamiento sub-píxel)
+  drawFruit(ctx, img, name, col, row) {
+    const i = FRUIT_INDEX[name];
+    let s = classicFruitFast.get(i);
+    if (!s) {
+      s = getBaked(`snake:classic:fruit:${name}`, () =>
+        bakeSprite(CELL, CELL, (b) => drawFruit(b, img, name, 0, 0)),
+      );
+      classicFruitFast.set(i, s);
+    }
+    ctx.drawImage(s, col * CELL, row * CELL);
+  },
 };
 
 // ── neon: platform palette, strokes over translucent fills, glow ───────────
@@ -126,94 +270,151 @@ const NEON = {
   ],
 };
 const NEON_INSET = 5;
+const NEON_SIZE = CELL - NEON_INSET * 2;
+
+function paintNeonBoard(ctx: CanvasRenderingContext2D) {
+  ctx.fillStyle = NEON.bg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = NEON.grid;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = CELL; x < W; x += CELL) {
+    ctx.moveTo(x + 0.5, 0);
+    ctx.lineTo(x + 0.5, H);
+  }
+  for (let y = CELL; y < H; y += CELL) {
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(W, y + 0.5);
+  }
+  ctx.stroke();
+}
+
+// Capas de un segmento, en el orden en que el contexto las compone
+const NEON_FILL_SHADOW = 0;
+const NEON_FILL = 1;
+const NEON_STROKE_SHADOW = 2;
+const NEON_STROKE = 3;
+const NEON_HEAD = 10; // + dirCode
+const NEON_FRUIT = 20; // + índice de color
+
+const neonFast: SpriteMap = new Map();
+
+function neonSegmentPath(b: CanvasRenderingContext2D) {
+  b.beginPath();
+  b.roundRect(
+    BAKE_PAD + NEON_INSET,
+    BAKE_PAD + NEON_INSET,
+    NEON_SIZE,
+    NEON_SIZE,
+    6,
+  );
+}
+function neonSegmentFill(b: CanvasRenderingContext2D) {
+  b.fillStyle = NEON.bodyFill;
+  neonSegmentPath(b);
+  b.fill();
+}
+function neonSegmentStroke(b: CanvasRenderingContext2D) {
+  b.lineWidth = 2;
+  b.strokeStyle = NEON.body;
+  neonSegmentPath(b);
+  b.stroke();
+}
+
+function buildNeon(code: number): HTMLCanvasElement {
+  return bakeSprite(SPRITE, SPRITE, (b) => {
+    if (code === NEON_FILL_SHADOW) {
+      shadowOnly(b, NEON.body, 12, neonSegmentFill);
+    } else if (code === NEON_FILL) {
+      neonSegmentFill(b);
+    } else if (code === NEON_STROKE_SHADOW) {
+      shadowOnly(b, NEON.body, 12, neonSegmentStroke);
+    } else if (code === NEON_STROKE) {
+      neonSegmentStroke(b);
+    } else if (code >= NEON_FRUIT) {
+      const c = NEON.fruits[code - NEON_FRUIT];
+      const cx = BAKE_PAD + CELL / 2;
+      const cy = BAKE_PAD + CELL / 2 + 2;
+      b.shadowColor = c.stroke;
+      b.shadowBlur = 14;
+      b.lineWidth = 2;
+      b.strokeStyle = c.stroke;
+      b.fillStyle = c.fill;
+      b.beginPath();
+      b.arc(cx, cy, 11, 0, Math.PI * 2);
+      b.fill();
+      b.stroke();
+
+      // Stem
+      b.shadowColor = NEON.body;
+      b.strokeStyle = NEON.body;
+      b.beginPath();
+      b.moveTo(cx, cy - 11);
+      b.lineTo(cx + 4, cy - 16);
+      b.stroke();
+    } else {
+      const d = code - NEON_HEAD;
+      b.lineWidth = 2;
+      b.shadowColor = NEON.head;
+      b.shadowBlur = 16;
+      b.strokeStyle = NEON.head;
+      b.fillStyle = NEON.headFill;
+      b.beginPath();
+      b.roundRect(BAKE_PAD + 3, BAKE_PAD + 3, CELL - 6, CELL - 6, 8);
+      b.fill();
+      b.stroke();
+
+      b.shadowColor = NEON.eyes;
+      b.shadowBlur = 6;
+      b.fillStyle = NEON.eyes;
+      fillEyes(b, BAKE_PAD, BAKE_PAD, codeDx(d), codeDy(d), 8, 4, false);
+    }
+  });
+}
 
 const neon: SnakeSkin = {
   name: 'Neon',
-  drawBoard(ctx) {
-    ctx.fillStyle = NEON.bg;
-    ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = NEON.grid;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let x = CELL; x < W; x += CELL) {
-      ctx.moveTo(x + 0.5, 0);
-      ctx.lineTo(x + 0.5, H);
-    }
-    for (let y = CELL; y < H; y += CELL) {
-      ctx.moveTo(0, y + 0.5);
-      ctx.lineTo(W, y + 0.5);
-    }
-    ctx.stroke();
-  },
+  drawBoard: bakedBoard('neon', paintNeonBoard),
   drawSnake(ctx, snake, dir) {
-    const size = CELL - NEON_INSET * 2;
-
-    ctx.save();
-    ctx.lineWidth = 2;
-    ctx.shadowBlur = 12;
-    ctx.shadowColor = NEON.body;
-    ctx.strokeStyle = NEON.body;
-    ctx.fillStyle = NEON.bodyFill;
+    const fillShadow = sprite(
+      neonFast,
+      'snake:neon:',
+      NEON_FILL_SHADOW,
+      buildNeon,
+    );
+    const fill = sprite(neonFast, 'snake:neon:', NEON_FILL, buildNeon);
+    const strokeShadow = sprite(
+      neonFast,
+      'snake:neon:',
+      NEON_STROKE_SHADOW,
+      buildNeon,
+    );
+    const stroke = sprite(neonFast, 'snake:neon:', NEON_STROKE, buildNeon);
     for (let i = snake.length - 1; i >= 1; i--) {
+      const col = snake[i].col;
+      const row = snake[i].row;
       ctx.globalAlpha = bodyAlpha(i, snake.length);
-      ctx.beginPath();
-      ctx.roundRect(
-        snake[i].col * CELL + NEON_INSET,
-        snake[i].row * CELL + NEON_INSET,
-        size,
-        size,
-        6,
-      );
-      ctx.fill();
-      ctx.stroke();
+      drawCell(ctx, fillShadow, col, row);
+      drawCell(ctx, fill, col, row);
+      drawCell(ctx, strokeShadow, col, row);
+      drawCell(ctx, stroke, col, row);
     }
-
-    const head = snake[0];
-    const hx = head.col * CELL;
-    const hy = head.row * CELL;
     ctx.globalAlpha = 1;
-    ctx.shadowColor = NEON.head;
-    ctx.shadowBlur = 16;
-    ctx.strokeStyle = NEON.head;
-    ctx.fillStyle = NEON.headFill;
-    ctx.beginPath();
-    ctx.roundRect(hx + 3, hy + 3, CELL - 6, CELL - 6, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    const eye = 4;
-    ctx.shadowColor = NEON.eyes;
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = NEON.eyes;
-    for (const e of eyeCenters(hx, hy, dir, 8)) {
-      ctx.fillRect(e.x - eye / 2, e.y - eye / 2, eye, eye);
-    }
-    ctx.restore();
+    drawCell(
+      ctx,
+      sprite(neonFast, 'snake:neon:', NEON_HEAD + dirCode(dir), buildNeon),
+      snake[0].col,
+      snake[0].row,
+    );
   },
   drawFruit(ctx, _img, name, col, row) {
-    const c = NEON.fruits[FRUIT_NAMES.indexOf(name) % NEON.fruits.length];
-    const cx = col * CELL + CELL / 2;
-    const cy = row * CELL + CELL / 2 + 2;
-
-    ctx.save();
-    ctx.shadowColor = c.stroke;
-    ctx.shadowBlur = 14;
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = c.stroke;
-    ctx.fillStyle = c.fill;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 11, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Stem
-    ctx.shadowColor = NEON.body;
-    ctx.strokeStyle = NEON.body;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy - 11);
-    ctx.lineTo(cx + 4, cy - 16);
-    ctx.stroke();
-    ctx.restore();
+    const c = FRUIT_INDEX[name] % NEON.fruits.length;
+    drawCell(
+      ctx,
+      sprite(neonFast, 'snake:neon:', NEON_FRUIT + c, buildNeon),
+      col,
+      row,
+    );
   },
 };
 
@@ -239,16 +440,43 @@ const RETRO_FRUIT = [
   '.fffff.',
 ];
 
+function paintRetroBoard(ctx: CanvasRenderingContext2D) {
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      ctx.fillStyle = (col + row) % 2 === 0 ? RETRO.bgA : RETRO.bgB;
+      ctx.fillRect(col * CELL, row * CELL, CELL, CELL);
+    }
+  }
+}
+
+// Fruta de píxeles pre-renderizada en una celda, por color
+function buildRetroFruit(code: number): HTMLCanvasElement {
+  return bakeSprite(CELL, CELL, (b) => {
+    const size = RETRO_FRUIT.length * RETRO_PX;
+    const ox = (CELL - size) / 2;
+    const oy = (CELL - size) / 2;
+    const colours: Record<string, string> = {
+      f: RETRO.fruits[code],
+      w: RETRO.shine,
+      g: RETRO.head,
+    };
+    RETRO_FRUIT.forEach((line, y) => {
+      for (let x = 0; x < line.length; x++) {
+        const c = colours[line[x]];
+        if (!c) continue;
+        b.fillStyle = c;
+        b.fillRect(ox + x * RETRO_PX, oy + y * RETRO_PX, RETRO_PX, RETRO_PX);
+      }
+    });
+  });
+}
+
+const retroFast: SpriteMap = new Map();
+let retroOverlay: HTMLCanvasElement | null = null;
+
 const retro: SnakeSkin = {
   name: 'Retro',
-  drawBoard(ctx) {
-    for (let row = 0; row < ROWS; row++) {
-      for (let col = 0; col < COLS; col++) {
-        ctx.fillStyle = (col + row) % 2 === 0 ? RETRO.bgA : RETRO.bgB;
-        ctx.fillRect(col * CELL, row * CELL, CELL, CELL);
-      }
-    }
-  },
+  drawBoard: bakedBoard('retro', paintRetroBoard),
   drawSnake(ctx, snake, dir) {
     const size = CELL - RETRO_INSET * 2;
 
@@ -268,40 +496,25 @@ const retro: SnakeSkin = {
     ctx.fillStyle = RETRO.head;
     ctx.fillRect(hx + 2, hy + 2, CELL - 4, CELL - 4);
 
-    const eye = 6;
     ctx.fillStyle = RETRO.bgA;
-    for (const e of eyeCenters(hx, hy, dir, 8)) {
-      ctx.fillRect(
-        Math.round(e.x - eye / 2),
-        Math.round(e.y - eye / 2),
-        eye,
-        eye,
-      );
-    }
+    fillEyes(ctx, hx, hy, dir.dx, dir.dy, 8, 6, true);
   },
   drawFruit(ctx, _img, name, col, row) {
-    const fruit = RETRO.fruits[FRUIT_NAMES.indexOf(name) % RETRO.fruits.length];
-    const size = RETRO_FRUIT.length * RETRO_PX;
-    const ox = col * CELL + (CELL - size) / 2;
-    const oy = row * CELL + (CELL - size) / 2;
-    const colours: Record<string, string> = {
-      f: fruit,
-      w: RETRO.shine,
-      g: RETRO.head,
-    };
-
-    RETRO_FRUIT.forEach((line, y) => {
-      for (let x = 0; x < line.length; x++) {
-        const c = colours[line[x]];
-        if (!c) continue;
-        ctx.fillStyle = c;
-        ctx.fillRect(ox + x * RETRO_PX, oy + y * RETRO_PX, RETRO_PX, RETRO_PX);
-      }
-    });
+    const c = FRUIT_INDEX[name] % RETRO.fruits.length;
+    ctx.drawImage(
+      sprite(retroFast, 'snake:retro:fruit:', c, buildRetroFruit),
+      col * CELL,
+      row * CELL,
+    );
   },
   drawOverlay(ctx) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-    for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+    retroOverlay ??= getBaked('snake:retro:overlay', () =>
+      bakeSprite(W, H, (b) => {
+        b.fillStyle = 'rgba(0, 0, 0, 0.22)';
+        for (let y = 0; y < H; y += 3) b.fillRect(0, y, W, 1);
+      }),
+    );
+    ctx.drawImage(retroOverlay, 0, 0);
   },
 };
 

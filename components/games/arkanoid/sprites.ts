@@ -73,6 +73,10 @@ export function loadSpritesheet(): Promise<HTMLCanvasElement> {
   return pending;
 }
 
+export function isSpritesheetLoaded(): boolean {
+  return sheet !== null;
+}
+
 export function drawFrame(
   ctx: CanvasRenderingContext2D,
   frame: Frame,
