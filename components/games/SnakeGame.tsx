@@ -126,15 +126,22 @@ export default function SnakeGame({
     let eaten = 0;
     let level = 1;
 
+    // Buffers reutilizados por spawnFruit (sin Set ni arrays nuevos por fruta)
+    const taken = new Uint8Array(COLS * ROWS);
+    const free = new Int16Array(COLS * ROWS);
+
     // Elige entre las celdas libres, sin reintentar al azar. Sin celdas libres devuelve null (victoria, paso 6).
     function spawnFruit(): Fruit | null {
-      const taken = new Set(snake.map((c) => c.row * COLS + c.col));
-      const free: number[] = [];
-      for (let i = 0; i < COLS * ROWS; i++) {
-        if (!taken.has(i)) free.push(i);
+      taken.fill(0);
+      for (let i = 0; i < snake.length; i++) {
+        taken[snake[i].row * COLS + snake[i].col] = 1;
       }
-      if (!free.length) return null;
-      const idx = free[Math.floor(Math.random() * free.length)];
+      let freeCount = 0;
+      for (let i = 0; i < COLS * ROWS; i++) {
+        if (!taken[i]) free[freeCount++] = i;
+      }
+      if (!freeCount) return null;
+      const idx = free[Math.floor(Math.random() * freeCount)];
       return {
         col: idx % COLS,
         row: Math.floor(idx / COLS),
@@ -191,7 +198,11 @@ export default function SnakeGame({
 
     emit();
 
+    // El tablero solo cambia en step(): sin cambios ni cambio de skin no se repinta.
+    let dirty = true;
+
     function step() {
+      dirty = true;
       if (queue.length) dir = queue.shift()!;
       const col = snake[0].col + dir.dx;
       const row = snake[0].row + dir.dy;
@@ -204,16 +215,17 @@ export default function SnakeGame({
       const eats = fruit !== null && fruit.col === col && fruit.row === row;
 
       // Si no come, la cola se retira en este mismo tick, así que su celda queda libre para la cabeza.
-      const body = eats ? snake : snake.slice(0, -1);
-      if (body.some((c) => c.col === col && c.row === row)) {
-        endGame();
-        return;
+      const bodyLength = eats ? snake.length : snake.length - 1;
+      for (let i = 0; i < bodyLength; i++) {
+        if (snake[i].col === col && snake[i].row === row) {
+          endGame();
+          return;
+        }
       }
-
-      snake.unshift({ col, row });
 
       if (eats) {
         // Comer: la cola no se retira, así que la serpiente crece 1 segmento.
+        snake.unshift({ col, row });
         eaten += 1;
         score += POINTS_PER_FRUIT;
         level = Math.floor(eaten / FRUITS_PER_LEVEL) + 1;
@@ -221,7 +233,11 @@ export default function SnakeGame({
         emit();
         if (!fruit) endGame(); // tablero lleno: victoria
       } else {
-        snake.pop();
+        // La cola retirada se reutiliza como nueva cabeza (sin asignaciones por tick).
+        const tail = snake.pop()!;
+        tail.col = col;
+        tail.row = row;
+        snake.unshift(tail);
       }
     }
 
@@ -235,6 +251,7 @@ export default function SnakeGame({
         let last = performance.now();
         let acc = 0;
         let wasPaused = pausedRef.current;
+        let drawnSkin: SkinId | null = null;
 
         const frame = (now: number) => {
           probe.frame(now);
@@ -258,16 +275,28 @@ export default function SnakeGame({
           }
 
           // Visual only: the skin never touches the game state
-          const S = SKINS[skinRef.current] ?? SKINS.classic;
-          S.drawBoard(ctx);
-          if (fruit) S.drawFruit(ctx, img, fruit.name, fruit.col, fruit.row);
-          S.drawSnake(ctx, snake, dir, green);
-          S.drawOverlay?.(ctx);
+          if (dirty || skinRef.current !== drawnSkin) {
+            dirty = false;
+            drawnSkin = skinRef.current;
+            const S = SKINS[drawnSkin] ?? SKINS.classic;
+            S.drawBoard(ctx);
+            if (fruit) S.drawFruit(ctx, img, fruit.name, fruit.col, fruit.row);
+            S.drawSnake(ctx, snake, dir, green);
+            S.drawOverlay?.(ctx);
+          }
           raf = requestAnimationFrame(frame);
         };
 
+        // Si el navegador descarta el contexto 2D (p. ej. pestaña en segundo plano), se repinta al recuperarlo.
+        const onContextRestored = () => {
+          dirty = true;
+        };
         window.addEventListener('keydown', onKeyDown);
-        removeKeys = () => window.removeEventListener('keydown', onKeyDown);
+        canvas.addEventListener('contextrestored', onContextRestored);
+        removeKeys = () => {
+          window.removeEventListener('keydown', onKeyDown);
+          canvas.removeEventListener('contextrestored', onContextRestored);
+        };
         raf = requestAnimationFrame(frame);
       })
       .catch(() => {});

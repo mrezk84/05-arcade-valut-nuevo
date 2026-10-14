@@ -3,6 +3,24 @@
 import { useEffect, useRef } from 'react';
 import { createPerfProbe } from './perf/probe';
 import { SKINS, type AsteroidsSkin, type SkinId } from './asteroids/skins';
+import {
+  BULLET_SPRITE_C,
+  HUD_H,
+  bakedBackground,
+  bakedBullet,
+  bakedOverlay,
+  hudLayer,
+  particleSquareStylesFor,
+  particleStreakStyles,
+} from './asteroids/baked';
+
+const PREVENT_DEFAULT_KEYS = new Set([
+  'Space',
+  'ArrowUp',
+  'ArrowDown',
+  'ArrowLeft',
+  'ArrowRight',
+]);
 
 interface AsteroidsGameProps {
   paused: boolean;
@@ -59,16 +77,20 @@ export default function AsteroidsGame({
     const probe = createPerfProbe('asteroids', skinRef.current);
 
     // ── Skin (visual only; refreshed every frame from skinRef) ──────────────
-    let S: AsteroidsSkin = SKINS[skinRef.current];
+    let skinId: SkinId = skinRef.current;
+    let S: AsteroidsSkin = SKINS[skinId];
+    // Per-skin particle colour tables (no string building per frame)
+    let streakStyles = particleStreakStyles(skinId);
+    let squareStyles = particleSquareStylesFor(skinId);
     // Press Start 2P family injected by next/font on <html>; empty if missing
     const pixelFamily = getComputedStyle(canvas)
       .getPropertyValue('--font-press-start')
       .trim();
 
-    function glow(color: string) {
+    function glow(color: string, c: CanvasRenderingContext2D = ctx) {
       if (!S.glow) return;
-      ctx.shadowBlur = S.glow;
-      ctx.shadowColor = color;
+      c.shadowBlur = S.glow;
+      c.shadowColor = color;
     }
 
     // ── Input ────────────────────────────────────────────────────────────────
@@ -78,12 +100,7 @@ export default function AsteroidsGame({
     function onKeyDown(e: KeyboardEvent) {
       justPressed[e.code] = !keys[e.code];
       keys[e.code] = true;
-      if (
-        ['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(
-          e.code,
-        )
-      )
-        e.preventDefault();
+      if (PREVENT_DEFAULT_KEYS.has(e.code)) e.preventDefault();
     }
     function onKeyUp(e: KeyboardEvent) {
       keys[e.code] = false;
@@ -117,6 +134,17 @@ export default function AsteroidsGame({
       radius: number;
       dead: boolean;
       constructor(x: number, y: number, angle: number) {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.ttl = 0;
+        this.radius = 2;
+        this.dead = false;
+        this.init(x, y, angle);
+      }
+      // Pooled: a dead bullet is re-initialised instead of allocating a new one
+      init(x: number, y: number, angle: number) {
         this.x = x;
         this.y = y;
         const SPEED = 520;
@@ -125,6 +153,7 @@ export default function AsteroidsGame({
         this.ttl = 1.1;
         this.radius = 2;
         this.dead = false;
+        return this;
       }
       update(dt: number) {
         this.x = wrap(this.x + this.vx * dt, W);
@@ -133,6 +162,15 @@ export default function AsteroidsGame({
         if (this.ttl <= 0) this.dead = true;
       }
       draw() {
+        if (S.glow && S.bulletShape === 'circle') {
+          // Glow pre-rendered once per skin (no shadowBlur per bullet per frame)
+          ctx.drawImage(
+            bakedBullet(skinId),
+            this.x - BULLET_SPRITE_C,
+            this.y - BULLET_SPRITE_C,
+          );
+          return;
+        }
         ctx.fillStyle = S.bullet;
         glow(S.bullet);
         if (S.bulletShape === 'square') {
@@ -193,17 +231,19 @@ export default function AsteroidsGame({
         this.y = wrap(this.y + this.vy * dt, H);
         this.rot += this.rotSpeed * dt;
       }
-      split(): Asteroid[] {
-        if (this.size <= 1) return [];
-        return [
+      // Appends the two children to `out` (no intermediate array)
+      splitInto(out: Asteroid[]) {
+        if (this.size <= 1) return;
+        out.push(
           new Asteroid(this.x, this.y, this.size - 1),
           new Asteroid(this.x, this.y, this.size - 1),
-        ];
+        );
       }
       draw() {
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        ctx.rotate(this.rot);
+        // Same matrix as translate(x, y) + rotate(rot), without save/restore
+        const c = Math.cos(this.rot);
+        const s = Math.sin(this.rot);
+        ctx.setTransform(c, s, -s, c, this.x, this.y);
         ctx.strokeStyle = S.asteroid;
         ctx.lineWidth = S.lineWidth;
         ctx.lineJoin = S.lineJoin;
@@ -218,7 +258,8 @@ export default function AsteroidsGame({
         }
         glow(S.asteroid);
         ctx.stroke();
-        ctx.restore();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        if (S.glow) ctx.shadowBlur = 0;
       }
     }
 
@@ -268,13 +309,16 @@ export default function AsteroidsGame({
         this.x = wrap(this.x + this.vx * dt, W);
         this.y = wrap(this.y + this.vy * dt, H);
       }
-      tryShoot(): Bullet[] {
-        if (this.shootCooldown > 0 || this.dead) return [];
+      tryShoot(): Bullet | null {
+        if (this.shootCooldown > 0 || this.dead) return null;
         this.shootCooldown = 0.2;
         const NOSE = 21;
         const ox = this.x + Math.cos(this.angle) * NOSE;
         const oy = this.y + Math.sin(this.angle) * NOSE;
-        return [new Bullet(ox, oy, this.angle)];
+        const pooled = bulletPool.pop();
+        return pooled
+          ? pooled.init(ox, oy, this.angle)
+          : new Bullet(ox, oy, this.angle);
       }
       draw() {
         if (this.dead) return;
@@ -321,6 +365,17 @@ export default function AsteroidsGame({
       ttl: number;
       dead: boolean;
       constructor(x: number, y: number) {
+        this.x = 0;
+        this.y = 0;
+        this.vx = 0;
+        this.vy = 0;
+        this.life = 0;
+        this.ttl = 0;
+        this.dead = false;
+        this.init(x, y);
+      }
+      // Pooled: a dead particle is re-initialised instead of allocating a new one
+      init(x: number, y: number) {
         this.x = x;
         this.y = y;
         const angle = rand(0, Math.PI * 2);
@@ -330,6 +385,7 @@ export default function AsteroidsGame({
         this.life = rand(0.4, 1.1);
         this.ttl = this.life;
         this.dead = false;
+        return this;
       }
       update(dt: number) {
         this.x += this.vx * dt;
@@ -341,12 +397,11 @@ export default function AsteroidsGame({
         const alpha = this.ttl / this.life;
         if (S.particleShape === 'square') {
           // 8-bit fade: alpha in four hard steps, 2×2 px dots on the pixel grid
-          const step = Math.ceil(alpha * 4) / 4;
-          ctx.fillStyle = `rgba(${S.particleRgb},${step})`;
+          ctx.fillStyle = squareStyles[Math.ceil(alpha * 4)];
           ctx.fillRect(Math.round(this.x) - 1, Math.round(this.y) - 1, 2, 2);
           return;
         }
-        ctx.strokeStyle = `rgba(${S.particleRgb},${alpha.toFixed(2)})`;
+        ctx.strokeStyle = streakStyles[Math.round(alpha * 100)];
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(this.x, this.y);
@@ -398,16 +453,42 @@ export default function AsteroidsGame({
       spawnAsteroids(4);
     }
 
+    // Pools of dead entities, reused instead of allocating new ones. They are
+    // bounded by the max number of simultaneous bullets/particles.
+    const bulletPool: Bullet[] = [];
+    const particlePool: Particle[] = [];
+    // Scratch list for asteroids born from splits during a frame
+    const spawned: Asteroid[] = [];
+
+    // In-place, order-preserving removal of dead entities (no new arrays)
+    function compact<T extends { dead: boolean }>(list: T[], pool?: T[]) {
+      let j = 0;
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (e.dead) pool?.push(e);
+        else list[j++] = e;
+      }
+      list.length = j;
+    }
+
+    function releaseAll<T>(list: T[], pool: T[]) {
+      for (let i = 0; i < list.length; i++) pool.push(list[i]);
+      list.length = 0;
+    }
+
     function nextLevel() {
       level++;
-      bullets = [];
-      particles = [];
+      releaseAll(bullets, bulletPool);
+      releaseAll(particles, particlePool);
       ship.reset();
       spawnAsteroids(3 + level);
     }
 
     function explode(x: number, y: number, count = 8) {
-      for (let i = 0; i < count; i++) particles.push(new Particle(x, y));
+      for (let i = 0; i < count; i++) {
+        const pooled = particlePool.pop();
+        particles.push(pooled ? pooled.init(x, y) : new Particle(x, y));
+      }
     }
 
     function killShip() {
@@ -425,16 +506,16 @@ export default function AsteroidsGame({
     // ── Update ───────────────────────────────────────────────────────────────
     function update(dt: number) {
       if (state === 'gameover') {
-        particles.forEach((p) => p.update(dt));
-        particles = particles.filter((p) => !p.dead);
+        for (let i = 0; i < particles.length; i++) particles[i].update(dt);
+        compact(particles, particlePool);
         return;
       }
 
       if (state === 'dead') {
         deadTimer -= dt;
-        particles.forEach((p) => p.update(dt));
-        particles = particles.filter((p) => !p.dead);
-        asteroids.forEach((a) => a.update(dt));
+        for (let i = 0; i < particles.length; i++) particles[i].update(dt);
+        compact(particles, particlePool);
+        for (let i = 0; i < asteroids.length; i++) asteroids[i].update(dt);
         if (deadTimer <= 0) {
           state = 'playing';
           ship.reset();
@@ -442,33 +523,40 @@ export default function AsteroidsGame({
         return;
       }
 
-      if (pressed('Space')) bullets.push(...ship.tryShoot());
+      if (pressed('Space')) {
+        const shot = ship.tryShoot();
+        if (shot) bullets.push(shot);
+      }
 
       ship.update(dt);
-      bullets.forEach((b) => b.update(dt));
-      asteroids.forEach((a) => a.update(dt));
-      particles.forEach((p) => p.update(dt));
+      for (let i = 0; i < bullets.length; i++) bullets[i].update(dt);
+      for (let i = 0; i < asteroids.length; i++) asteroids[i].update(dt);
+      for (let i = 0; i < particles.length; i++) particles[i].update(dt);
 
-      bullets = bullets.filter((b) => !b.dead);
-      particles = particles.filter((p) => !p.dead);
+      compact(bullets, bulletPool);
+      compact(particles, particlePool);
 
-      const newAsteroids: Asteroid[] = [];
-      for (const b of bullets) {
-        for (const a of asteroids) {
+      for (let i = 0; i < bullets.length; i++) {
+        const b = bullets[i];
+        for (let k = 0; k < asteroids.length; k++) {
+          const a = asteroids[k];
           if (!a.dead && !b.dead && dist(b, a) < a.radius) {
             b.dead = true;
             a.dead = true;
             score += POINTS[a.size];
             explode(a.x, a.y, a.size * 5);
-            newAsteroids.push(...a.split());
+            a.splitInto(spawned);
           }
         }
       }
-      asteroids = asteroids.filter((a) => !a.dead).concat(newAsteroids);
-      bullets = bullets.filter((b) => !b.dead);
+      compact(asteroids);
+      for (let i = 0; i < spawned.length; i++) asteroids.push(spawned[i]);
+      spawned.length = 0;
+      compact(bullets, bulletPool);
 
       if (ship.invincible <= 0) {
-        for (const a of asteroids) {
+        for (let i = 0; i < asteroids.length; i++) {
+          const a = asteroids[i];
           if (dist(ship, a) < ship.radius + a.radius * 0.82) {
             killShip();
             break;
@@ -480,47 +568,87 @@ export default function AsteroidsGame({
     }
 
     // ── Draw ─────────────────────────────────────────────────────────────────
-    function drawLifeIcon(x: number, y: number) {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(-Math.PI / 2);
-      ctx.strokeStyle = S.hudText;
-      ctx.lineWidth = S.lifeLineWidth;
-      ctx.lineJoin = S.lineJoin;
-      glow(S.hudText);
-      ctx.beginPath();
-      ctx.moveTo(9, 0);
-      ctx.lineTo(-6, -5);
-      ctx.lineTo(-3, 0);
-      ctx.lineTo(-6, 5);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.restore();
+    function drawLifeIcon(c: CanvasRenderingContext2D, x: number, y: number) {
+      c.save();
+      c.translate(x, y);
+      c.rotate(-Math.PI / 2);
+      c.strokeStyle = S.hudText;
+      c.lineWidth = S.lifeLineWidth;
+      c.lineJoin = S.lineJoin;
+      glow(S.hudText, c);
+      c.beginPath();
+      c.moveTo(9, 0);
+      c.lineTo(-6, -5);
+      c.lineTo(-3, 0);
+      c.lineTo(-6, 5);
+      c.closePath();
+      c.stroke();
+      c.restore();
     }
 
-    function drawHUD() {
-      ctx.fillStyle = S.hudText;
-      ctx.font = S.hudFont(pixelFamily);
-      ctx.textAlign = 'left';
-      glow(S.hudText);
-      ctx.fillText(`SCORE  ${score}`, 14, 26);
-      ctx.textAlign = 'center';
-      ctx.fillText(`NIVEL ${level}`, W / 2, 26);
-      ctx.shadowBlur = 0;
-      for (let i = 0; i < lives; i++) drawLifeIcon(W - 16 - i * 22, 18);
+    function drawHUD(c: CanvasRenderingContext2D) {
+      c.fillStyle = S.hudText;
+      c.font = S.hudFont(pixelFamily);
+      c.textAlign = 'left';
+      glow(S.hudText, c);
+      c.fillText(`SCORE  ${score}`, 14, 26);
+      c.textAlign = 'center';
+      c.fillText(`NIVEL ${level}`, W / 2, 26);
+      c.shadowBlur = 0;
+      for (let i = 0; i < lives; i++) drawLifeIcon(c, W - 16 - i * 22, 18);
+    }
+
+    // HUD (text + lives, with glow in neon) baked into a reusable layer that is
+    // only redrawn when score, level, lives, skin or font loading change.
+    const hud = hudLayer();
+    const hudCtx = hud.getContext('2d')!;
+    let hudScore = -1,
+      hudLevel = -1,
+      hudLives = -1,
+      hudSkin: SkinId | null = null,
+      hudFontsLoaded = false;
+
+    function refreshHUD() {
+      // While a web font is loading the fallback is drawn; redraw once it lands
+      const fontsLoaded = document.fonts.status === 'loaded';
+      if (
+        score === hudScore &&
+        level === hudLevel &&
+        lives === hudLives &&
+        skinId === hudSkin &&
+        fontsLoaded &&
+        hudFontsLoaded
+      )
+        return;
+      hudScore = score;
+      hudLevel = level;
+      hudLives = lives;
+      hudSkin = skinId;
+      hudFontsLoaded = fontsLoaded;
+      hudCtx.clearRect(0, 0, W, HUD_H);
+      drawHUD(hudCtx);
     }
 
     function draw() {
-      S = SKINS[skinRef.current];
-      ctx.fillStyle = S.bg;
-      ctx.fillRect(0, 0, W, H);
-      S.drawBackdrop?.(ctx, W, H);
-      particles.forEach((p) => p.draw());
-      asteroids.forEach((a) => a.draw());
-      bullets.forEach((b) => b.draw());
+      if (skinRef.current !== skinId) {
+        skinId = skinRef.current;
+        streakStyles = particleStreakStyles(skinId);
+        squareStyles = particleSquareStylesFor(skinId);
+      }
+      S = SKINS[skinId];
+      if (S.drawBackdrop) {
+        ctx.drawImage(bakedBackground(skinId), 0, 0);
+      } else {
+        ctx.fillStyle = S.bg;
+        ctx.fillRect(0, 0, W, H);
+      }
+      for (let i = 0; i < particles.length; i++) particles[i].draw();
+      for (let i = 0; i < asteroids.length; i++) asteroids[i].draw();
+      for (let i = 0; i < bullets.length; i++) bullets[i].draw();
       ship.draw();
-      drawHUD();
-      S.drawOverlay?.(ctx, W, H);
+      refreshHUD();
+      ctx.drawImage(hud, 0, 0);
+      if (S.drawOverlay) ctx.drawImage(bakedOverlay(skinId), 0, 0);
       // GAME OVER overlay removed — React modal handles it
     }
 

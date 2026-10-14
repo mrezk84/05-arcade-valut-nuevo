@@ -2,8 +2,10 @@ import {
   EXPLOSION_FRAMES,
   drawFrame,
   drawSprite,
+  isSpritesheetLoaded,
   type BlockColor,
 } from './sprites';
+import { bakeSprite, getBaked } from '../perf/spriteCache';
 
 export type SkinId = 'classic' | 'neon' | 'retro';
 
@@ -15,15 +17,16 @@ type Ctx = CanvasRenderingContext2D;
  */
 export interface ArkanoidSkin {
   name: string;
-  /** Canvas background. */
+  /** Canvas background colour. */
   bg: string;
   hudText: string;
   /** Receives the resolved pixel font family (empty if unavailable). */
   hudFont(pixelFamily: string): string;
   /** `shadowBlur` for the HUD text; 0 disables glow. */
   hudGlow: number;
-  /** Drawn right after the background, under every entity. */
-  drawBackdrop?(ctx: Ctx, w: number, h: number): void;
+  /** Paints the whole canvas (it also clears the previous frame). */
+  drawBackground(ctx: Ctx, w: number, h: number): void;
+  /** Blocks always sit on integer coordinates (grid of the level). */
   drawBlock(
     ctx: Ctx,
     color: BlockColor,
@@ -85,7 +88,10 @@ const NEON_BLOCK_FILL = Object.fromEntries(
   Object.entries(NEON_BLOCK).map(([k, c]) => [k, rgba(c, NEON_FILL_ALPHA)]),
 ) as Record<BlockColor, string>;
 
-const NEON_SPARKS: readonly [number, number][] = [
+const NEON_PADDLE_FILL = rgba(NEON.cyan, NEON_FILL_ALPHA);
+const NEON_GRID = rgba(NEON.magenta, 0.06);
+
+const NEON_SPARKS: readonly (readonly [number, number])[] = [
   [-1, -1],
   [1, -1],
   [-1, 1],
@@ -117,7 +123,17 @@ const RETRO_BLOCK: Record<BlockColor, string> = {
   gray: RETRO.cream,
 };
 
-export const SKINS: Record<SkinId, ArkanoidSkin> = {
+// Chunk size per explosion step (shared, not rebuilt every frame)
+const RETRO_EXPLOSION_SIZES = [8, 6, 4, 2];
+
+function solidBackground(bg: string) {
+  return (ctx: Ctx, w: number, h: number) => {
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+  };
+}
+
+const RAW_SKINS: Record<SkinId, ArkanoidSkin> = {
   // Original look: Petraheim spritesheet on black
   classic: {
     name: 'Clásico',
@@ -125,6 +141,7 @@ export const SKINS: Record<SkinId, ArkanoidSkin> = {
     hudText: '#fff',
     hudFont: () => 'bold 18px monospace',
     hudGlow: 0,
+    drawBackground: solidBackground('#000'),
     drawBlock(ctx, color, x, y, w, h) {
       drawSprite(ctx, `block_${color}`, x, y, w, h);
     },
@@ -146,8 +163,10 @@ export const SKINS: Record<SkinId, ArkanoidSkin> = {
     hudText: NEON.cyan,
     hudFont: () => 'bold 18px monospace',
     hudGlow: 8,
-    drawBackdrop(ctx, w, h) {
-      ctx.strokeStyle = rgba(NEON.magenta, 0.06);
+    drawBackground(ctx, w, h) {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = NEON_GRID;
       ctx.lineWidth = 1;
       ctx.beginPath();
       for (let x = 40; x < w; x += 40) {
@@ -190,15 +209,22 @@ export const SKINS: Record<SkinId, ArkanoidSkin> = {
         h - 7 + grow,
       );
       ctx.fillStyle = c;
-      for (const [dx, dy] of NEON_SPARKS)
-        ctx.fillRect(cx + dx * t * 40 - 1.5, cy + dy * t * 20 - 1.5, 3, 3);
+      for (let i = 0; i < NEON_SPARKS.length; i++) {
+        const spark = NEON_SPARKS[i];
+        ctx.fillRect(
+          cx + spark[0] * t * 40 - 1.5,
+          cy + spark[1] * t * 20 - 1.5,
+          3,
+          3,
+        );
+      }
       ctx.restore();
     },
     drawPaddle(ctx, x, y, w, h) {
       ctx.save();
       ctx.beginPath();
       ctx.roundRect(x + 0.75, y + 0.75, w - 1.5, h - 1.5, (h - 1.5) / 2);
-      ctx.fillStyle = rgba(NEON.cyan, NEON_FILL_ALPHA);
+      ctx.fillStyle = NEON_PADDLE_FILL;
       ctx.fill();
       ctx.shadowBlur = 14;
       ctx.shadowColor = NEON.cyan;
@@ -227,6 +253,7 @@ export const SKINS: Record<SkinId, ArkanoidSkin> = {
     hudFont: (pixel) =>
       pixel ? `12px ${pixel}, monospace` : 'bold 18px monospace',
     hudGlow: 0,
+    drawBackground: solidBackground(RETRO.bg),
     drawBlock(ctx, color, x, y, w, h) {
       const c = RETRO_BLOCK[color];
       const bx = Math.round(x);
@@ -241,7 +268,7 @@ export const SKINS: Record<SkinId, ArkanoidSkin> = {
     drawExplosion(ctx, color, t, x, y, w, h) {
       // Brick breaks into 4×2 chunks that shrink and scatter in four steps
       const step = explosionStep(t);
-      const size = [8, 6, 4, 2][step];
+      const size = RETRO_EXPLOSION_SIZES[step];
       const spread = step * 5;
       ctx.fillStyle = RETRO_BLOCK[color];
       for (let i = 0; i < 4; i++)
@@ -283,6 +310,90 @@ export const SKINS: Record<SkinId, ArkanoidSkin> = {
       for (let y = 0; y < h; y += 3) ctx.fillRect(0, y, w, 1);
     },
   },
+};
+
+// ── Caché de dibujado (SPEC 12) ─────────────────────────────────────────────
+// Fondos, overlays y ladrillos se pintan una vez en un canvas offscreen y cada
+// frame hace un `drawImage` a coordenadas enteras (copia 1:1, mismo aspecto).
+// La pala y la bola se quedan en vivo: se mueven en subpíxeles y un sprite
+// pre-renderizado no quedaría idéntico.
+
+const BAKE_PAD = 24; // margen para que el halo del glow (shadowBlur ≤ 14) no se recorte
+
+function withBakedBackground(id: SkinId, skin: ArkanoidSkin): ArkanoidSkin {
+  const drawRaw = skin.drawBackground;
+  let baked: HTMLCanvasElement | null = null;
+  return {
+    ...skin,
+    drawBackground(ctx, w, h) {
+      baked ??= getBaked(`arkanoid:${id}:bg`, () =>
+        bakeSprite(w, h, (b) => drawRaw(b, w, h)),
+      );
+      ctx.drawImage(baked, 0, 0);
+    },
+  };
+}
+
+function withBakedOverlay(id: SkinId, skin: ArkanoidSkin): ArkanoidSkin {
+  const drawRaw = skin.drawOverlay;
+  if (!drawRaw) return skin;
+  let baked: HTMLCanvasElement | null = null;
+  return {
+    ...skin,
+    drawOverlay(ctx, w, h) {
+      baked ??= getBaked(`arkanoid:${id}:overlay`, () =>
+        bakeSprite(w, h, (b) => drawRaw(b, w, h)),
+      );
+      ctx.drawImage(baked, 0, 0);
+    },
+  };
+}
+
+// Un sprite por color de ladrillo. Todos los ladrillos miden lo mismo
+// (BLOCK_W × BLOCK_H), así que la caché queda en 7 sprites por skin.
+function withBakedBlocks(
+  id: SkinId,
+  skin: ArkanoidSkin,
+  pad: number,
+  ready: () => boolean = () => true,
+): ArkanoidSkin {
+  const drawRaw = skin.drawBlock;
+  const fast: Partial<Record<BlockColor, HTMLCanvasElement>> = {};
+  return {
+    ...skin,
+    drawBlock(ctx, color, x, y, w, h) {
+      let sprite = fast[color];
+      if (!sprite) {
+        // Sin spritesheet todavía: en vivo, para no cachear un sprite vacío
+        if (!ready()) return drawRaw(ctx, color, x, y, w, h);
+        sprite = getBaked(`arkanoid:${id}:block:${color}`, () =>
+          bakeSprite(w + pad * 2, h + pad * 2, (b) =>
+            drawRaw(b, color, pad, pad, w, h),
+          ),
+        );
+        fast[color] = sprite;
+      }
+      ctx.drawImage(sprite, x - pad, y - pad);
+    },
+  };
+}
+
+export const SKINS: Record<SkinId, ArkanoidSkin> = {
+  classic: withBakedBlocks(
+    'classic',
+    RAW_SKINS.classic,
+    0,
+    isSpritesheetLoaded,
+  ),
+  neon: withBakedBlocks(
+    'neon',
+    withBakedBackground('neon', RAW_SKINS.neon),
+    BAKE_PAD,
+  ),
+  retro: withBakedOverlay(
+    'retro',
+    withBakedBlocks('retro', RAW_SKINS.retro, 0),
+  ),
 };
 
 export const SKIN_IDS = Object.keys(SKINS) as SkinId[];

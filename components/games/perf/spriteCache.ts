@@ -29,3 +29,20 @@ export function getBaked(
   }
   return baked;
 }
+
+const layers = new Map<string, HTMLCanvasElement>();
+
+// Lienzo offscreen reutilizable cuyo contenido redibuja el juego solo cuando
+// cambia (p. ej. las piezas ya fijadas de un tablero). Hay uno por clave
+// ("<gameId>:<capa>") y se reutiliza entre partidas y reinicios, así que no
+// crece con la duración de la partida ni con los reinicios.
+export function getLayer(key: string, w: number, h: number): HTMLCanvasElement {
+  let layer = layers.get(key);
+  if (!layer) {
+    layer = document.createElement('canvas');
+    layers.set(key, layer);
+  }
+  if (layer.width !== w) layer.width = w;
+  if (layer.height !== h) layer.height = h;
+  return layer;
+}
