@@ -8,6 +8,8 @@ const MESSAGES: Record<string, string> = {
   email_exists: 'Ya existe una cuenta con ese correo',
   weak_password:
     'La contraseña es demasiado débil. Usa al menos 8 caracteres, mezclando letras y números.',
+  reauthentication_needed:
+    'Por seguridad, cierra sesión y vuelve a iniciarla para cambiar tu contraseña.',
   same_password: 'La contraseña nueva debe ser distinta de la anterior',
   email_address_invalid: 'El correo no es válido',
   validation_failed: 'Revisa los datos e inténtalo de nuevo',

@@ -264,6 +264,14 @@ function AuthForm() {
             className="btn ghost"
             type="button"
             style={{ width: '100%', marginTop: 10 }}
+            onClick={() => router.push('/account')}
+          >
+            MI CUENTA
+          </button>
+          <button
+            className="btn ghost"
+            type="button"
+            style={{ width: '100%', marginTop: 10 }}
             onClick={signOut}
           >
             CERRAR SESIÓN

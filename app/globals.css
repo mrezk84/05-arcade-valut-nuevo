@@ -398,6 +398,9 @@ a {
   margin-left: 16px;
   white-space: nowrap;
 }
+.av-nav .av-user-chip:hover .name {
+  text-decoration: underline;
+}
 .av-nav .av-user-chip .name {
   font-family: var(--pixel);
   font-size: 10px;
@@ -2142,6 +2145,10 @@ a {
   transition:
     border-color 140ms,
     box-shadow 140ms;
+}
+.field input:read-only {
+  color: var(--ink-faint);
+  cursor: default;
 }
 .field input:focus {
   border-color: var(--cyan);

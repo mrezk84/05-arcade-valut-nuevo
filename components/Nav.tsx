@@ -83,10 +83,14 @@ export default function Nav() {
           </span>
         ) : user ? (
           <>
-            <div className="av-user-chip" title={email ?? undefined}>
+            <Link
+              href="/account"
+              className="av-user-chip"
+              title={email ?? undefined}
+            >
               <Avatar name={user} src={avatar} />
               <span className="name">{user}</span>
-            </div>
+            </Link>
             <button
               type="button"
               className="btn ghost signout-btn"
@@ -140,13 +144,17 @@ export default function Nav() {
         </Link>
         {user ? (
           <>
-            <div className="who">
+            <Link
+              href="/account"
+              className={`who${pathname === '/account' ? ' active' : ''}`}
+              onClick={close}
+            >
               <Avatar name={user} src={avatar} />
               <div className="text">
                 <span className="name">{user}</span>
                 {email && <span className="mail">{email}</span>}
               </div>
-            </div>
+            </Link>
             <button type="button" className="signout" onClick={handleSignOut}>
               Cerrar sesión
             </button>
