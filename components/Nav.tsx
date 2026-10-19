@@ -2,39 +2,33 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useUser } from '@/app/context/UserContext';
+
+function Avatar({ name, src }: { name: string; src: string | null }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className="av-avatar" aria-hidden="true">
+      {src && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt=""
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        name.charAt(0)
+      )}
+    </span>
+  );
+}
 
 export default function Nav() {
   const [open, setOpen] = useState(false);
-  const [menu, setMenu] = useState<{ open: boolean; path: string }>({
-    open: false,
-    path: '',
-  });
-  const menuRef = useRef<HTMLDivElement>(null);
-  const pathname = usePathname();
   const router = useRouter();
-  const { user, email, loading, signOut } = useUser();
-
-  // El menú se cierra solo al cambiar de ruta (estado derivado, sin efecto).
-  const menuOpen = menu.open && menu.path === pathname;
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onPointerDown = (e: PointerEvent) => {
-      if (!menuRef.current?.contains(e.target as Node))
-        setMenu({ open: false, path: '' });
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenu({ open: false, path: '' });
-    };
-    document.addEventListener('pointerdown', onPointerDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [menuOpen]);
+  const pathname = usePathname();
+  const { user, email, avatar, loading, signOut } = useUser();
 
   const isLibrary = pathname.startsWith('/games');
   const isHall = pathname === '/hall-of-fame';
@@ -46,14 +40,13 @@ export default function Nav() {
 
   async function handleSignOut() {
     close();
-    setMenu({ open: false, path: '' });
     await signOut();
     router.push('/');
   }
 
   return (
     <>
-      <nav className="av-nav">
+      <nav className={`av-nav${user ? ' signed-in' : ''}`}>
         <Link href="/" className="logo" onClick={close}>
           <div className="logo-mark" />
           <div className="logo-text neon-cyan">
@@ -89,28 +82,19 @@ export default function Nav() {
             Iniciar Sesión
           </span>
         ) : user ? (
-          <div className="av-user-wrap" ref={menuRef}>
+          <>
+            <div className="av-user-chip" title={email ?? undefined}>
+              <Avatar name={user} src={avatar} />
+              <span className="name">{user}</span>
+            </div>
             <button
               type="button"
-              className="btn ghost auth-btn"
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              onClick={() => setMenu({ open: !menuOpen, path: pathname })}
+              className="btn ghost signout-btn"
+              onClick={handleSignOut}
             >
-              {user} ▾
+              Cerrar sesión
             </button>
-            {menuOpen && (
-              <div className="av-user-menu" role="menu">
-                <div className="who">
-                  <span className="name">{user}</span>
-                  {email && <span className="mail">{email}</span>}
-                </div>
-                <button type="button" role="menuitem" onClick={handleSignOut}>
-                  Cerrar sesión
-                </button>
-              </div>
-            )}
-          </div>
+          </>
         ) : (
           <Link href="/auth" className="btn auth-btn">
             Iniciar Sesión
@@ -157,8 +141,11 @@ export default function Nav() {
         {user ? (
           <>
             <div className="who">
-              <span className="name">{user}</span>
-              {email && <span className="mail">{email}</span>}
+              <Avatar name={user} src={avatar} />
+              <div className="text">
+                <span className="name">{user}</span>
+                {email && <span className="mail">{email}</span>}
+              </div>
             </div>
             <button type="button" className="signout" onClick={handleSignOut}>
               Cerrar sesión

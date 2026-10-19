@@ -23,3 +23,10 @@ export const getDisplayName = (user: User): string => {
   }
   return DEFAULT_USERNAME;
 };
+
+/** Foto de perfil del proveedor (Google: `picture`, GitHub: `avatar_url`), si existe. */
+export const getAvatarUrl = (user: User): string | null => {
+  const meta = user.user_metadata ?? {};
+  const url = asString(meta.avatar_url) || asString(meta.picture);
+  return url.startsWith('https://') ? url : null;
+};
