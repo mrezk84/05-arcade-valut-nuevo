@@ -1,6 +1,6 @@
 # SPEC 13 — Autenticación real con Supabase Auth
 
-> **Estado:** Aprobado · **Depende de:** SPEC 04 (integración de Supabase), SPEC 06 (tabla `scores`) · **Fecha:** 2026-10-19
+> **Estado:** Implementado · **Depende de:** SPEC 04 (integración de Supabase), SPEC 06 (tabla `scores`) · **Fecha:** 2026-10-19
 > **Objetivo:** Sustituir la sesión local de `/auth` (`av_user` en `localStorage`) por autenticación real con Supabase Auth: registro e inicio de sesión con correo y contraseña (con verificación de correo y recuperación de contraseña) y acceso con Google y GitHub, con avatar de perfil y una pantalla para editar la cuenta, manteniendo el modo invitado y vinculando cada score a la cuenta con `scores.user_id`.
 
 ---
