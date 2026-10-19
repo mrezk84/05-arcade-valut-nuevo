@@ -16,7 +16,7 @@ Games currently integrated: **Asteroids, Tetris, Arkanoid, Snake, Frogger**. Eac
 - **React 19.2.4**
 - **Tailwind CSS v4** (PostCSS plugin via `@tailwindcss/postcss`)
 - **TypeScript**
-- **Supabase** (`@supabase/ssr`, `@supabase/supabase-js`) — tables `games` and `scores`
+- **Supabase** (`@supabase/ssr`, `@supabase/supabase-js`) — Supabase Auth, tables `games` and `scores`
 - **Resend** — contact form email (`app/api/contact/route.ts`)
 - **Prettier + ESLint** — formatting and linting
 
@@ -77,22 +77,35 @@ Uses Next.js **App Router** exclusively — no `pages/` directory.
 - `/games/<id>/play` — dedicated play-page per game (one folder each): `asteroids`, `tetris`, `arkanoid`, `snake`, `frogger`. `app/games/[id]/play/page.tsx` is the generic fallback with simulated score, not a real game.
 - `/hall-of-fame` — top scores per game (`HallOfFameClient.tsx`)
 - `/about` — about page with contact form → `app/api/contact/route.ts` (Resend)
-- `/auth` — sign in/up UI; currently a local-only session (see Auth below)
+- `/auth` — sign in / sign up (email + password, Google, GitHub), optional avatar at sign up, "check your email" and "forgot password" states; with an active session it shows "Ya iniciaste sesión" instead of the form. See Auth below.
+- `/auth/callback` — Route Handler that exchanges the `code` of email-verification, password-recovery and OAuth links for a session; `next` only accepts internal paths.
+- `/auth/reset` — set a new password (needs the recovery session).
+- `/account` — "Mi cuenta": edit username, avatar and password. Redirects to `/auth` without a session.
 
 ### Data layer
 
 - `lib/supabase/client.ts` (browser) and `lib/supabase/server.ts` (Server Components) — create clients with `@supabase/ssr`.
 - `lib/supabase/types.ts` — `GameRow` and `ScoreRow`. Real schema:
   - `games`: `id`, `title`, `short`, `long`, `cat` (`ARCADE|PUZZLE|SHOOTER|VERSUS`), `cover`, `color` (`cyan|magenta|yellow|green`), `sort_order`
-  - `scores`: `id`, `game_id`, `name`, `score`, `created_at` — no `user_id`
+  - `scores`: `id`, `game_id`, `name`, `score`, `created_at`, `user_id` (nullable uuid → `auth.users(id)`, `on delete set null`; `null` = guest or a score from before SPEC 13). `user_id` defaults to `auth.uid()`, so the client never sends it: `GamePlayShell` is unchanged. The INSERT policy `scores_insert_own_or_guest` only allows the caller's own `user_id` (or `null` for guests); there is no UPDATE or DELETE policy.
   - Limits: score 0–10 000 000; name 1–10 characters.
-- `specs/06-games-table-leaderboard-supabase.md` is outdated vs. the real schema (it uses `player_name`/`user_id`). The real schema wins; check with the Supabase MCP (`list_tables`) when in doubt.
+- `specs/06-games-table-leaderboard-supabase.md` is outdated vs. the real schema (it uses `player_name`). The real schema wins; check with the Supabase MCP (`list_tables`) when in doubt.
 - `app/data/` — static data (`games.ts`, `scores.ts`) from the original visual MVP.
 - The Supabase MCP server is configured in `.mcp.json`.
 
 ### Auth
 
-`app/context/UserContext.tsx` provides `useUser()` (`user`, `login`, `signOut`). The session is only a username stored in `localStorage` (`av_user`); there is no Supabase Auth yet. The last name used when saving a score is stored in `av_player_name`.
+Real authentication with **Supabase Auth** (SPEC 13): email + password (email verification required, password recovery), Google and GitHub. Guest mode stays: every route is public and signing in only gives identity.
+
+- `proxy.ts` (Next 16 replacement for `middleware.ts`) runs `lib/supabase/proxy.ts` → `updateSession`, which refreshes the cookie session with `getClaims()`. Never use `getSession()` on the server: it reads the cookie without validating it.
+- `app/context/UserContext.tsx` provides `useUser()` → `user` (display name, `string | null`), `email`, `avatar` (URL or `null`), `loading` and `signOut()` (async). It reads the session with `getSession()` and listens with `onAuthStateChange`. It is only for showing identity, never for security decisions. `GamePlayShell` only reads `user` to pre-fill the game-over name.
+- `lib/auth/username.ts` — `normalizeUsername` (uppercase, max 10) and `getDisplayName`: `user_metadata.username ?? user_name ?? name ?? email prefix`, else `JUGADOR`. `getAvatarUrl`: provider photo (`avatar_url`/`picture`, `https` only) ?? preset avatar ?? `null` (the UI then shows the initial).
+- `lib/auth/avatars.ts` — the 8 preset avatars (`ship`, `alien`, `ghost`, `joystick`, `coin`, `cartridge`, `star`, `heart`), SVGs in `public/avatars/`. `user_metadata` is user-editable, so `avatar` is always validated with `isAvatarId`. `components/AvatarPicker.tsx` is the shared picker.
+- `lib/auth/errors.ts` — translates Supabase Auth error **codes** (not texts) to Spanish, with a generic fallback.
+- The username lives in `user_metadata.username` (not unique); there is no `profiles` table. Uploading your own avatar is not implemented.
+- The Nav shows avatar + name + "Cerrar sesión" with a session (hamburger menu below 1000 px, avatar only below 840 px).
+- The last name used when saving a score is stored in `av_player_name`.
+- Manual dashboard setup (Supabase → Auth): Email provider with "Confirm email", Google and GitHub providers, and `http://localhost:3000/auth/callback` plus the production URL as Redirect URLs. Default Supabase SMTP is rate-limited; custom SMTP (Resend) is a future spec.
 
 ### Games (`components/games/`)
 
