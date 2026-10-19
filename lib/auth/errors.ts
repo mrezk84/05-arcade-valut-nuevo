@@ -20,6 +20,8 @@ const MESSAGES: Record<string, string> = {
   flow_state_expired: 'El enlace ha caducado. Solicita uno nuevo.',
   flow_state_not_found: 'El enlace no es válido. Solicita uno nuevo.',
   bad_code_verifier: 'El enlace no es válido. Solicita uno nuevo.',
+  pkce_code_verifier_not_found:
+    'No se pudo completar la verificación en este navegador. Inicia sesión o solicita un enlace nuevo.',
   bad_oauth_callback: 'No se pudo completar el acceso con el proveedor',
   bad_oauth_state: 'No se pudo completar el acceso con el proveedor',
   oauth_provider_not_supported: 'Ese proveedor de acceso no está disponible',

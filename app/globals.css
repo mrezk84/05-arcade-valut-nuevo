@@ -1996,6 +1996,51 @@ a {
   border-color: var(--cyan);
   box-shadow: 0 0 12px rgba(0, 245, 255, 0.35);
 }
+.field input[aria-invalid='true'] {
+  border-color: var(--magenta);
+}
+.field-error {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--magenta);
+}
+.auth-alert {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 4px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--magenta);
+  background: rgba(255, 0, 110, 0.08);
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.auth-alert.ok {
+  border-color: var(--green);
+  background: rgba(0, 255, 136, 0.08);
+}
+.auth-alert strong {
+  font-family: var(--pixel);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--green);
+}
+.auth-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--cyan);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.auth-link:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .auth-divider {
   display: flex;
   align-items: center;
