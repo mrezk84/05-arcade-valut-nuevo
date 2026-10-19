@@ -10,6 +10,7 @@ import { USERNAME_MAX, normalizeUsername } from '@/lib/auth/username';
 import { createClient } from '@/lib/supabase/client';
 
 const PASSWORD_MIN = 8;
+const REDIRECT_DELAY = 1200; // ms, para que se vea el mensaje de éxito
 
 type Notice = { kind: 'ok' | 'error'; text: string } | null;
 
@@ -28,7 +29,9 @@ function AccountForms({
   avatarSrc: string | null;
 }) {
   const [supabase] = useState(createClient);
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
 
   // Con foto de Google o GitHub, esa foto tiene prioridad: no se ofrece elegir.
   const hasProviderPhoto = !!avatarSrc && !avatarSrc.startsWith('/');
@@ -48,9 +51,16 @@ function AccountForms({
   }>({});
   const [passNotice, setPassNotice] = useState<Notice>(null);
 
+  // Tras guardar, lleva a la página de inicio.
+  useEffect(() => {
+    if (!done) return;
+    const t = setTimeout(() => router.push('/'), REDIRECT_DELAY);
+    return () => clearTimeout(t);
+  }, [done, router]);
+
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || done) return;
 
     setProfileNotice(null);
     const trimmed = username.trim();
@@ -79,6 +89,7 @@ function AccountForms({
         return;
       }
       setProfileNotice({ kind: 'ok', text: 'Datos guardados' });
+      setDone(true);
     } catch {
       setProfileNotice({ kind: 'error', text: translateAuthError(null) });
     } finally {
@@ -88,7 +99,7 @@ function AccountForms({
 
   async function savePassword(e: React.FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || done) return;
 
     setPassNotice(null);
     const found: { pass?: string; confirm?: string } = {};
@@ -108,6 +119,7 @@ function AccountForms({
       setPass('');
       setConfirm('');
       setPassNotice({ kind: 'ok', text: 'Contraseña actualizada' });
+      setDone(true);
     } catch {
       setPassNotice({ kind: 'error', text: translateAuthError(null) });
     } finally {
@@ -158,7 +170,11 @@ function AccountForms({
             )}
           </div>
           {!hasProviderPhoto && (
-            <AvatarPicker value={avatar} onChange={setAvatar} disabled={busy} />
+            <AvatarPicker
+              value={avatar}
+              onChange={setAvatar}
+              disabled={busy || done}
+            />
           )}
 
           {profileNotice && (
@@ -172,7 +188,7 @@ function AccountForms({
           <button
             className="btn lg"
             type="submit"
-            disabled={busy}
+            disabled={busy || done}
             style={{ width: '100%', marginTop: 8 }}
           >
             {busy ? 'GUARDANDO…' : 'GUARDAR PERFIL'}
@@ -237,7 +253,7 @@ function AccountForms({
           <button
             className="btn lg"
             type="submit"
-            disabled={busy}
+            disabled={busy || done}
             style={{ width: '100%', marginTop: 8 }}
           >
             {busy ? 'GUARDANDO…' : 'CAMBIAR CONTRASEÑA'}
