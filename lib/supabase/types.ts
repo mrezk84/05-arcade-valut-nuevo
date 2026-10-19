@@ -15,4 +15,5 @@ export interface ScoreRow {
   name: string;
   score: number;
   created_at: string;
+  user_id: string | null;
 }
