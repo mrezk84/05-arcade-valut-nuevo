@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useUser } from '@/app/context/UserContext';
 import { translateAuthError, translateAuthErrorCode } from '@/lib/auth/errors';
 import { USERNAME_MAX, normalizeUsername } from '@/lib/auth/username';
@@ -32,8 +32,17 @@ function AuthForm() {
   const [resetSent, setResetSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [supabase] = useState(createClient);
-  const { signOut } = useUser();
+  const { user, email: sessionEmail, signOut } = useUser();
   const router = useRouter();
+
+  // Al volver con "atrás" desde el proveedor, la página puede restaurarse en estado de carga.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setLoading(false);
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => window.removeEventListener('pageshow', onPageShow);
+  }, []);
 
   function switchTab(next: Tab) {
     setTab(next);
@@ -137,6 +146,28 @@ function AuthForm() {
     }
   }
 
+  async function signInWithProvider(provider: 'google' | 'github') {
+    if (loading) return;
+    setFormError(null);
+    setInfo(null);
+    setUnverified(false);
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+      // Si no hay error, el navegador está saliendo hacia el proveedor.
+      if (error) {
+        setFormError(translateAuthError(error));
+        setLoading(false);
+      }
+    } catch {
+      setFormError(translateAuthError(null));
+      setLoading(false);
+    }
+  }
+
   async function playAsGuest() {
     await signOut();
     router.push('/');
@@ -204,6 +235,37 @@ function AuthForm() {
       </div>
     </div>
   );
+
+  if (user && !callbackError) {
+    return (
+      <div className="av-auth-wrap fade-in">
+        <div className="auth-card">
+          {header}
+          <div className="auth-alert ok" role="status">
+            <strong>Ya iniciaste sesión</strong>
+            Estás dentro como {user}
+            {sessionEmail ? ` (${sessionEmail})` : ''}.
+          </div>
+          <button
+            className="btn lg"
+            type="button"
+            style={{ width: '100%', marginTop: 8 }}
+            onClick={() => router.push('/')}
+          >
+            IR AL VAULT
+          </button>
+          <button
+            className="btn ghost"
+            type="button"
+            style={{ width: '100%', marginTop: 10 }}
+            onClick={signOut}
+          >
+            CERRAR SESIÓN
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (sentTo) {
     return (
@@ -458,10 +520,20 @@ function AuthForm() {
 
         <div className="auth-divider">O CONTINÚA CON</div>
         <div className="social">
-          <button className="btn ghost" type="button">
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={loading}
+            onClick={() => signInWithProvider('google')}
+          >
             ◆ GOOGLE
           </button>
-          <button className="btn ghost" type="button">
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={loading}
+            onClick={() => signInWithProvider('github')}
+          >
             ▣ GITHUB
           </button>
         </div>

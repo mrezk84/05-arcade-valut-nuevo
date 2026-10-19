@@ -334,6 +334,87 @@ a {
 .av-mobile-panel a.active {
   color: var(--cyan);
 }
+.av-mobile-panel .who {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 12px;
+  border-bottom: 1px dashed var(--line-2);
+}
+.av-mobile-panel .who .name {
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--cyan);
+}
+.av-mobile-panel .who .mail {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.av-mobile-panel .signout {
+  padding: 14px 12px;
+  text-align: left;
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--magenta);
+  background: none;
+  border: 0;
+  border-bottom: 1px dashed var(--line-2);
+  cursor: pointer;
+}
+.av-user-wrap {
+  position: relative;
+}
+.av-user-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  max-width: 280px;
+  z-index: 70;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  box-shadow: 0 0 30px rgba(0, 245, 255, 0.18);
+}
+.av-user-menu .who {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-bottom: 1px dashed var(--line-2);
+}
+.av-user-menu .who .name {
+  font-family: var(--pixel);
+  font-size: 10px;
+  color: var(--cyan);
+}
+.av-user-menu .who .mail {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.av-user-menu button {
+  display: block;
+  width: 100%;
+  padding: 12px 14px;
+  text-align: left;
+  font-family: var(--pixel);
+  font-size: 10px;
+  color: var(--magenta);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.av-user-menu button:hover,
+.av-user-menu button:focus-visible {
+  background: rgba(255, 0, 110, 0.1);
+  outline: 0;
+}
 .av-mobile-backdrop {
   position: fixed;
   inset: 0;
