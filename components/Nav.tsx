@@ -8,12 +8,18 @@ import { useUser } from '@/app/context/UserContext';
 function Avatar({ name, src }: { name: string; src: string | null }) {
   const [failed, setFailed] = useState(false);
   return (
-    <span className="av-avatar" aria-hidden="true">
+    <span
+      className="av-avatar"
+      aria-hidden="true"
+      style={{ width: 32, height: 32, overflow: 'hidden' }}
+    >
       {src && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={src}
           alt=""
+          width={32}
+          height={32}
           referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
         />
