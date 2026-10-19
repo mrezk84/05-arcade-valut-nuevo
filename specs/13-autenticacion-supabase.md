@@ -37,6 +37,7 @@
   - **Nombre de usuario:** se cambia con `updateUser({ data: { username } })`, con las mismas reglas del registro (1 a 10 caracteres, en mayúsculas). Pasa a tener prioridad sobre el nombre del proveedor en cuentas de Google o GitHub.
   - **Avatar:** se cambia entre los 8 prediseñados (o se quita) con `updateUser({ data: { avatar } })`. Si la cuenta tiene foto de Google o GitHub, esa foto tiene prioridad y el selector no se muestra.
   - **Contraseña:** se cambia con `updateUser({ password })` (mínimo 8 caracteres y confirmación coincidente). Si Supabase pide volver a autenticarse (`reauthentication_needed`), se muestra un aviso en español.
+  - Tras guardar con éxito (perfil o contraseña), se muestra el mensaje y a los 1,2 s redirige a `/`.
   - La Nav y el nombre del game-over reflejan los cambios sin recargar, porque `onAuthStateChange` emite `USER_UPDATED`.
 - **Acceso a `/account`:** el avatar y el nombre de la Nav y el panel móvil enlazan a `/account`, y `/auth` con sesión ofrece «MI CUENTA».
 - **Avatar visible:** el de la cuenta de Google o GitHub (`picture`, `avatar_url`) si existe, y si no el prediseñado elegido al registrarse (`user_metadata.avatar`). Si no hay ninguno, la inicial del nombre.
