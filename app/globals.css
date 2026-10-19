@@ -436,6 +436,12 @@ a {
     margin-left: 0;
   }
 }
+/* Sin sesión, en pantallas estrechas «Iniciar Sesión» ya está en el panel. */
+@media (max-width: 480px) {
+  .av-nav:not(.signed-in) .auth-btn {
+    display: none;
+  }
+}
 .av-mobile-backdrop {
   position: fixed;
   inset: 0;
@@ -2082,6 +2088,49 @@ a {
   color: var(--ink-faint);
   text-transform: uppercase;
   letter-spacing: 0.16em;
+}
+.field .field-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+.avatar-picker {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.avatar-picker button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 52px;
+  padding: 0;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  transition:
+    border-color 140ms,
+    box-shadow 140ms;
+}
+.avatar-picker button img {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+.avatar-picker button:hover:not(:disabled),
+.avatar-picker button:focus-visible {
+  border-color: var(--cyan);
+  outline: 0;
+}
+.avatar-picker button[aria-pressed='true'] {
+  border-color: var(--cyan);
+  box-shadow: 0 0 12px rgba(0, 245, 255, 0.45);
+}
+.avatar-picker button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .field input {
   height: 44px;

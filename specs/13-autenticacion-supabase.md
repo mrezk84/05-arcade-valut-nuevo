@@ -30,7 +30,7 @@
 - **`Nav` con sesión:** muestra el avatar y el nombre de usuario, y un botón "Cerrar sesión" donde antes estaba "Iniciar Sesión".
   - Escritorio: avatar, nombre y botón en la barra.
   - Hasta 1000 px de ancho la barra pasa al menú hamburguesa y deja solo el avatar y el nombre. Hasta 840 px deja solo el avatar, y el nombre, el correo y "Cerrar sesión" van en el panel lateral.
-  - Sin cambios para quien no ha iniciado sesión.
+  - Sin sesión no cambia, salvo que hasta 480 px el botón «Iniciar Sesión» se oculta de la barra (ya está en el panel lateral), porque con el hamburguesa no cabía y provocaba scroll horizontal.
 - **`/auth` con sesión iniciada:** en lugar del formulario muestra "Ya iniciaste sesión" con "IR AL VAULT" y "CERRAR SESIÓN". Con `?error=` en la URL sigue mostrando el formulario y su error.
 - **Pantalla `/account` («Mi cuenta»)** con la sesión iniciada. Sin sesión redirige a `/auth`.
   - Muestra el avatar, el nombre y el correo. **El correo no se edita.**
@@ -253,7 +253,7 @@ export interface ScoreRow {
 
 7. **Avatar, Nav con sesión y estado en `/auth`.**
    - Crear `lib/auth/avatars.ts` y los 8 SVG de `public/avatars/`. Añadir `getAvatarUrl` a `lib/auth/username.ts` y exponer `email` y `avatar` en `UserContext`.
-   - En la pestaña «CREAR CUENTA» de `app/auth/page.tsx`, selector de avatar (`role="radiogroup"`, opcional) y envío de `options.data.avatar` en `signUp`.
+   - En la pestaña «CREAR CUENTA» de `app/auth/page.tsx`, selector de avatar (componente `components/AvatarPicker.tsx`, un grupo de botones con `aria-pressed`, opcional) y envío de `options.data.avatar` en `signUp`.
    - `Nav.tsx`: avatar, nombre y botón «Cerrar sesión» con sesión, con el comportamiento responsive del Scope. `/auth` con sesión muestra «Ya iniciaste sesión».
    - _Verificación:_ registrar un correo de prueba con un avatar, verificar el correo y ver ese avatar en la Nav. Sin avatar se ve la inicial. Con Google o GitHub se ve la foto del proveedor. La Nav se ve bien a 1280, 1000, 860 y 390 px sin scroll horizontal, y «Cerrar sesión» funciona en escritorio y en el panel móvil.
 

@@ -5,6 +5,8 @@ import { Suspense, useEffect, useState } from 'react';
 import { useUser } from '@/app/context/UserContext';
 import { translateAuthError, translateAuthErrorCode } from '@/lib/auth/errors';
 import { USERNAME_MAX, normalizeUsername } from '@/lib/auth/username';
+import AvatarPicker from '@/components/AvatarPicker';
+import type { AvatarId } from '@/lib/auth/avatars';
 import { createClient } from '@/lib/supabase/client';
 
 type Tab = 'in' | 'up';
@@ -21,6 +23,7 @@ function AuthForm() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
+  const [avatar, setAvatar] = useState<AvatarId | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(
     callbackError ? translateAuthErrorCode(callbackError) : null,
@@ -103,7 +106,10 @@ function AuthForm() {
         email: mail,
         password: pass,
         options: {
-          data: { username: normalizeUsername(username) },
+          data: {
+            username: normalizeUsername(username),
+            ...(avatar ? { avatar } : {}),
+          },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
@@ -462,6 +468,14 @@ function AuthForm() {
               </span>
             )}
           </div>
+
+          {tab === 'up' && (
+            <AvatarPicker
+              value={avatar}
+              onChange={setAvatar}
+              disabled={loading}
+            />
+          )}
 
           {tab === 'in' && (
             <button
