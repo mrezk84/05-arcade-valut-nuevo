@@ -1,14 +1,34 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useUser } from '@/app/context/UserContext';
 
+function Avatar({ name, src }: { name: string; src: string | null }) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <span className="av-avatar" aria-hidden="true">
+      {src && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt=""
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        name.charAt(0)
+      )}
+    </span>
+  );
+}
+
 export default function Nav() {
   const [open, setOpen] = useState(false);
+  const router = useRouter();
   const pathname = usePathname();
-  const { user, signOut } = useUser();
+  const { user, email, avatar, loading, signOut } = useUser();
 
   const isLibrary = pathname.startsWith('/games');
   const isHall = pathname === '/hall-of-fame';
@@ -18,14 +38,15 @@ export default function Nav() {
     setOpen(false);
   }
 
-  function handleSignOut() {
-    signOut();
+  async function handleSignOut() {
     close();
+    await signOut();
+    router.push('/');
   }
 
   return (
     <>
-      <nav className="av-nav">
+      <nav className={`av-nav${user ? ' signed-in' : ''}`}>
         <Link href="/" className="logo" onClick={close}>
           <div className="logo-mark" />
           <div className="logo-text neon-cyan">
@@ -52,10 +73,32 @@ export default function Nav() {
           <span>CRÉDITOS · 03</span>
         </div>
 
-        {user ? (
-          <button className="btn ghost auth-btn" onClick={handleSignOut}>
-            {user} ▾
-          </button>
+        {loading ? (
+          <span
+            className="btn ghost auth-btn"
+            aria-hidden="true"
+            style={{ visibility: 'hidden' }}
+          >
+            Iniciar Sesión
+          </span>
+        ) : user ? (
+          <>
+            <Link
+              href="/account"
+              className="av-user-chip"
+              title={email ?? undefined}
+            >
+              <Avatar name={user} src={avatar} />
+              <span className="name">{user}</span>
+            </Link>
+            <button
+              type="button"
+              className="btn ghost signout-btn"
+              onClick={handleSignOut}
+            >
+              Cerrar sesión
+            </button>
+          </>
         ) : (
           <Link href="/auth" className="btn auth-btn">
             Iniciar Sesión
@@ -82,7 +125,11 @@ export default function Nav() {
         >
           MENÚ
         </div>
-        <Link href="/games" className={isLibrary ? 'active' : ''} onClick={close}>
+        <Link
+          href="/games"
+          className={isLibrary ? 'active' : ''}
+          onClick={close}
+        >
           Biblioteca
         </Link>
         <Link
@@ -92,20 +139,35 @@ export default function Nav() {
         >
           Salón de la Fama
         </Link>
-        <Link
-          href="/about"
-          className={isAbout ? 'active' : ''}
-          onClick={close}
-        >
+        <Link href="/about" className={isAbout ? 'active' : ''} onClick={close}>
           Sobre Nosotros
         </Link>
-        <Link
-          href="/auth"
-          className={pathname === '/auth' ? 'active' : ''}
-          onClick={close}
-        >
-          {user ? 'Cuenta' : 'Iniciar Sesión'}
-        </Link>
+        {user ? (
+          <>
+            <Link
+              href="/account"
+              className={`who${pathname === '/account' ? ' active' : ''}`}
+              onClick={close}
+            >
+              <Avatar name={user} src={avatar} />
+              <div className="text">
+                <span className="name">{user}</span>
+                {email && <span className="mail">{email}</span>}
+              </div>
+            </Link>
+            <button type="button" className="signout" onClick={handleSignOut}>
+              Cerrar sesión
+            </button>
+          </>
+        ) : (
+          <Link
+            href="/auth"
+            className={pathname === '/auth' ? 'active' : ''}
+            onClick={close}
+          >
+            Iniciar Sesión
+          </Link>
+        )}
         <div style={{ flex: 1 }} />
         <div
           className="pixel"
