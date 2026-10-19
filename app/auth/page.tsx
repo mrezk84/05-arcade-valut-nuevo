@@ -28,6 +28,8 @@ function AuthForm() {
   const [info, setInfo] = useState<string | null>(null);
   const [unverified, setUnverified] = useState(false);
   const [sentTo, setSentTo] = useState<string | null>(null);
+  const [forgot, setForgot] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [supabase] = useState(createClient);
   const { signOut } = useUser();
@@ -142,9 +144,47 @@ function AuthForm() {
 
   function backToLogin() {
     setSentTo(null);
+    setForgot(false);
+    setResetSent(false);
+    setErrors({});
     setInfo(null);
     setFormError(null);
     setTab('in');
+  }
+
+  function openForgot() {
+    setErrors({});
+    setFormError(null);
+    setInfo(null);
+    setUnverified(false);
+    setResetSent(false);
+    setForgot(true);
+  }
+
+  async function sendReset(e: React.FormEvent) {
+    e.preventDefault();
+    if (loading) return;
+
+    setFormError(null);
+    const mail = email.trim();
+    if (!mail) return setErrors({ email: 'Escribe tu correo' });
+    if (!EMAIL_RE.test(mail))
+      return setErrors({ email: 'El correo no es válido' });
+    setErrors({});
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(mail, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset`,
+      });
+      if (error) setFormError(translateAuthError(error));
+      // Mismo mensaje exista o no el correo, para no revelar qué cuentas existen.
+      else setResetSent(true);
+    } catch {
+      setFormError(translateAuthError(null));
+    } finally {
+      setLoading(false);
+    }
   }
 
   const header = (
@@ -194,6 +234,75 @@ function AuthForm() {
           >
             {loading ? 'ENVIANDO…' : 'REENVIAR CORREO'}
           </button>
+          <button
+            className="btn ghost"
+            type="button"
+            style={{ width: '100%', marginTop: 10 }}
+            onClick={backToLogin}
+          >
+            VOLVER A INICIAR SESIÓN
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (forgot) {
+    return (
+      <div className="av-auth-wrap fade-in">
+        <div className="auth-card">
+          {header}
+          {resetSent ? (
+            <div className="auth-alert ok" role="status">
+              <strong>Revisa tu correo</strong>
+              Si existe una cuenta con ese correo, te enviamos un enlace para
+              fijar una contraseña nueva.
+            </div>
+          ) : (
+            <form onSubmit={sendReset} noValidate>
+              <div className="mono auth-hint">
+                Escribe tu correo y te enviaremos un enlace para recuperar tu
+                contraseña.
+              </div>
+              <div className="field">
+                <label htmlFor="auth-forgot-email">Correo electrónico</label>
+                <input
+                  id="auth-forgot-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="jugador@vault.gg"
+                  autoComplete="email"
+                  aria-invalid={!!errors.email}
+                  aria-describedby={
+                    errors.email ? 'auth-forgot-email-err' : undefined
+                  }
+                />
+                {errors.email && (
+                  <span
+                    className="field-error"
+                    id="auth-forgot-email-err"
+                    role="alert"
+                  >
+                    {errors.email}
+                  </span>
+                )}
+              </div>
+              {formError && (
+                <div className="auth-alert" role="alert">
+                  {formError}
+                </div>
+              )}
+              <button
+                className="btn lg"
+                type="submit"
+                disabled={loading}
+                style={{ width: '100%', marginTop: 8 }}
+              >
+                {loading ? 'ENVIANDO…' : 'ENVIAR ENLACE'}
+              </button>
+            </form>
+          )}
           <button
             className="btn ghost"
             type="button"
@@ -291,6 +400,16 @@ function AuthForm() {
               </span>
             )}
           </div>
+
+          {tab === 'in' && (
+            <button
+              type="button"
+              className="auth-link auth-forgot"
+              onClick={openForgot}
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
+          )}
 
           {formError && (
             <div className="auth-alert" role="alert">

@@ -28,6 +28,8 @@ const MESSAGES: Record<string, string> = {
   provider_disabled: 'Ese proveedor de acceso no está disponible',
   access_denied: 'Cancelaste el acceso con el proveedor',
   user_banned: 'Esta cuenta está suspendida',
+  reset_no_session:
+    'Abre el enlace de recuperación de tu correo para fijar una contraseña nueva.',
   session_expired: 'Tu sesión ha caducado. Inicia sesión de nuevo.',
   session_not_found: 'Tu sesión ha caducado. Inicia sesión de nuevo.',
 };
