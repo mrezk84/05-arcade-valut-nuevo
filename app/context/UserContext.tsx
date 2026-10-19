@@ -1,38 +1,57 @@
 'use client';
 
-import { createContext, useContext, useState } from 'react';
+import type { Session } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { getDisplayName } from '@/lib/auth/username';
+import { createClient } from '@/lib/supabase/client';
 
 interface UserContextValue {
   user: string | null;
-  login: (name: string) => void;
-  signOut: () => void;
+  loading: boolean;
+  signOut: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextValue>({
   user: null,
-  login: () => {},
-  signOut: () => {},
+  loading: true,
+  signOut: async () => {},
 });
 
+const nameFromSession = (session: Session | null) =>
+  session ? getDisplayName(session.user) : null;
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<string | null>(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('av_user');
-  });
+  const [supabase] = useState(createClient);
+  const [user, setUser] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  function login(name: string) {
-    const trimmed = name.trim() || 'JUGADOR';
-    localStorage.setItem('av_user', trimmed);
-    setUser(trimmed);
-  }
+  useEffect(() => {
+    let active = true;
 
-  function signOut() {
-    localStorage.removeItem('av_user');
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return;
+      setUser(nameFromSession(data.session));
+      setLoading(false);
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(nameFromSession(session));
+      setLoading(false);
+    });
+
+    return () => {
+      active = false;
+      data.subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  async function signOut() {
+    await supabase.auth.signOut();
     setUser(null);
   }
 
   return (
-    <UserContext.Provider value={{ user, login, signOut }}>
+    <UserContext.Provider value={{ user, loading, signOut }}>
       {children}
     </UserContext.Provider>
   );

@@ -9,17 +9,16 @@ export default function Auth() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
-  const { login, signOut } = useUser();
+  const { signOut } = useUser();
   const router = useRouter();
 
+  // Paso 3: el formulario aún no autentica; el flujo real llega en el paso 4.
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    login((username || 'PLAYER1').toUpperCase().slice(0, 10));
-    router.push('/');
   }
 
-  function playAsGuest() {
-    signOut();
+  async function playAsGuest() {
+    await signOut();
     router.push('/');
   }
 
@@ -29,16 +28,30 @@ export default function Auth() {
         <div className="auth-header">
           <div className="mark" />
           <h2 className="neon-cyan">ARCADE VAULT</h2>
-          <div className="mono" style={{ fontSize: 11, color: 'var(--ink-faint)', letterSpacing: '0.16em', marginTop: 6 }}>
+          <div
+            className="mono"
+            style={{
+              fontSize: 11,
+              color: 'var(--ink-faint)',
+              letterSpacing: '0.16em',
+              marginTop: 6,
+            }}
+          >
             ACCESO AL SISTEMA · v2.6
           </div>
         </div>
 
         <div className="auth-tabs">
-          <button className={tab === 'in' ? 'on' : ''} onClick={() => setTab('in')}>
+          <button
+            className={tab === 'in' ? 'on' : ''}
+            onClick={() => setTab('in')}
+          >
             INICIAR SESIÓN
           </button>
-          <button className={tab === 'up' ? 'on' : ''} onClick={() => setTab('up')}>
+          <button
+            className={tab === 'up' ? 'on' : ''}
+            onClick={() => setTab('up')}
+          >
             CREAR CUENTA
           </button>
         </div>
@@ -48,7 +61,7 @@ export default function Auth() {
             <label>Usuario</label>
             <input
               value={username}
-              onChange={e => setUsername(e.target.value)}
+              onChange={(e) => setUsername(e.target.value)}
               placeholder="px_kai"
             />
           </div>
@@ -58,7 +71,7 @@ export default function Auth() {
               <input
                 type="email"
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="jugador@vault.gg"
               />
             </div>
@@ -68,26 +81,46 @@ export default function Auth() {
             <input
               type="password"
               value={pass}
-              onChange={e => setPass(e.target.value)}
+              onChange={(e) => setPass(e.target.value)}
               placeholder="••••••••"
             />
           </div>
-          <button className="btn lg" type="submit" style={{ width: '100%', marginTop: 8 }}>
+          <button
+            className="btn lg"
+            type="submit"
+            style={{ width: '100%', marginTop: 8 }}
+          >
             {tab === 'in' ? 'ENTRAR AL VAULT' : 'CREAR Y JUGAR'}
           </button>
         </form>
 
-        <button className="btn ghost" style={{ width: '100%', marginTop: 10 }} onClick={playAsGuest}>
+        <button
+          className="btn ghost"
+          style={{ width: '100%', marginTop: 10 }}
+          onClick={playAsGuest}
+        >
           JUGAR COMO INVITADO
         </button>
 
         <div className="auth-divider">O CONTINÚA CON</div>
         <div className="social">
-          <button className="btn ghost" type="button">◆ GOOGLE</button>
-          <button className="btn ghost" type="button">▣ GITHUB</button>
+          <button className="btn ghost" type="button">
+            ◆ GOOGLE
+          </button>
+          <button className="btn ghost" type="button">
+            ▣ GITHUB
+          </button>
         </div>
 
-        <div style={{ marginTop: 18, textAlign: 'center', fontSize: 11, color: 'var(--ink-faint)', letterSpacing: '0.1em' }}>
+        <div
+          style={{
+            marginTop: 18,
+            textAlign: 'center',
+            fontSize: 11,
+            color: 'var(--ink-faint)',
+            letterSpacing: '0.1em',
+          }}
+        >
           AL ENTRAR ACEPTAS LOS TÉRMINOS DEL SALÓN ARCADE
         </div>
       </div>
