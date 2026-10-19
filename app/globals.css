@@ -416,7 +416,7 @@ a {
 .av-nav .coin-counter {
   white-space: nowrap;
 }
-@media (max-width: 1100px) {
+@media (max-width: 1300px) {
   .av-nav.signed-in .coin-counter {
     display: none;
   }
