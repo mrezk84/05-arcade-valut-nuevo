@@ -61,6 +61,8 @@ export default function GamePlayShell({
   useEffect(() => {
     if (over) {
       const stored = localStorage.getItem('av_player_name');
+      // localStorage is an external system; read it once when the game ends
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (stored) setName(stored);
     }
   }, [over]);

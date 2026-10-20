@@ -7,7 +7,7 @@ const MESSAGES: Record<string, string> = {
   user_already_exists: 'Ya existe una cuenta con ese correo',
   email_exists: 'Ya existe una cuenta con ese correo',
   weak_password:
-    'La contraseña es demasiado débil. Usa al menos 8 caracteres, mezclando letras y números.',
+    'La contraseña es demasiado débil. Usa al menos 8 caracteres con minúsculas, mayúsculas, números y símbolos.',
   reauthentication_needed:
     'Por seguridad, cierra sesión y vuelve a iniciarla para cambiar tu contraseña.',
   same_password: 'La contraseña nueva debe ser distinta de la anterior',
