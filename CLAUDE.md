@@ -64,6 +64,7 @@ Defined in `.claude/agents/<name>.md` (read the file for the full contract). Inv
 - `skin-designer` — gives a game the skins `classic`/`neon`/`retro` (dark-mode checked) and the selector. Memory: `references/game-with-themes.md`.
 - `mobile-porter` — ports a game to mobile following SPEC 10. Memory: `references/game-mobile-status.md`.
 - `game-performance-booster` — audits and fixes a game's canvas performance following SPEC 12. No memory.
+- `security-auditor` — read-only security audit of the database (RLS, policies, grants, advisors) and the app (auth/session, protected routes, API routes, secrets, XSS, dependencies) against SPEC 13/14. Reports findings and proposes specs; never fixes. `@security-auditor [db|app|all]`. Memory: `references/security/security-status.md`.
 
 ## Architecture
 
@@ -101,6 +102,9 @@ Real authentication with **Supabase Auth** (SPEC 13): email + password (email ve
 - `app/context/UserContext.tsx` provides `useUser()` → `user` (display name, `string | null`), `email`, `avatar` (URL or `null`), `loading` and `signOut()` (async). It reads the session with `getSession()` and listens with `onAuthStateChange`. It is only for showing identity, never for security decisions. `GamePlayShell` only reads `user` to pre-fill the game-over name.
 - `lib/auth/username.ts` — `normalizeUsername` (uppercase, max 10) and `getDisplayName`: `user_metadata.username ?? user_name ?? name ?? email prefix`, else `JUGADOR`. `getAvatarUrl`: provider photo (`avatar_url`/`picture`, `https` only) ?? preset avatar ?? `null` (the UI then shows the initial).
 - `lib/auth/avatars.ts` — the 8 preset avatars (`ship`, `alien`, `ghost`, `joystick`, `coin`, `cartridge`, `star`, `heart`), SVGs in `public/avatars/`. `user_metadata` is user-editable, so `avatar` is always validated with `isAvatarId`. `components/AvatarPicker.tsx` is the shared picker.
+- **Protected routes (SPEC 14):** `PROTECTED_ROUTES` in `lib/supabase/proxy.ts` (exact path → redirect when there are no valid claims): `/account` → `/auth`, `/auth/reset` → `/auth?error=reset_no_session`. Everything else stays public (guest mode). It is a navigation check, not authorization: data is protected by RLS. The client-side redirects in those pages stay (sign-out while already inside). To protect another route, add one line there.
+- **Password rule (SPEC 14):** `lib/auth/password.ts` (`validatePassword`, `PASSWORD_REGEX`) — min 8 characters with lowercase, uppercase, digit and symbol. Applied at sign up, `/auth/reset` and `/account`; **not** at login (older accounts may have weak passwords). The regex is UX only: the real enforcement is the Supabase dashboard (Auth → Providers → Email: min length 8 + the same four requirements), which must stay in sync with the regex. Leaked password protection is Pro-only and stays off.
+- **Security headers (SPEC 14):** `next.config.ts` sets `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: strict-origin-when-cross-origin` on every route. No CSP/HSTS yet. Sign-ups are limited to 10/hour per IP in the dashboard (Auth → Rate Limits). `public.rls_auto_enable()` has `EXECUTE` revoked from `anon`/`authenticated`; the `ensure_rls` event trigger still enables RLS on new tables.
 - `lib/auth/errors.ts` — translates Supabase Auth error **codes** (not texts) to Spanish, with a generic fallback.
 - The username lives in `user_metadata.username` (not unique); there is no `profiles` table. Uploading your own avatar is not implemented.
 - The Nav shows avatar + name + "Cerrar sesión" with a session (hamburger menu below 1000 px, avatar only below 840 px).
@@ -125,7 +129,7 @@ holds the spec-driven design history, plus `specs/game-jam` for thematic jams.
 
 ### Other directories
 
-- `references/` — source material and agent memories: `started-games/` (original games to port), `source-assets/` (e.g. snake sprites), `templates/` (original HTML/JSX design), `gamepad-assets/` (MK-II pad design), plus `implemented-games.md`, `game-suggestiones-todo.md`, `game-with-themes.md`, `game-mobile-status.md`. Not part of the app.
+- `references/` — source material and agent memories: `started-games/` (original games to port), `source-assets/` (e.g. snake sprites), `templates/` (original HTML/JSX design), `gamepad-assets/` (MK-II pad design), plus `implemented-games.md`, `game-suggestiones-todo.md`, `game-with-themes.md`, `game-mobile-status.md`, plus `security/` (`security-checklist.md` and the `security-status.md` memory). Not part of the app.
 - `demos/`, `.playwright-mcp/`, `.playwright-screenshots/` — scratch/verification material.
 
 Server Components are the default; mark client components with `"use client"` only when needed. Shared UI goes in `components/` (`Nav.tsx`, `games/`).
