@@ -4,9 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useUser } from '@/app/context/UserContext';
 import { translateAuthError } from '@/lib/auth/errors';
+import { validatePassword } from '@/lib/auth/password';
 import { createClient } from '@/lib/supabase/client';
-
-const PASSWORD_MIN = 8;
 
 type FieldErrors = { pass?: string; confirm?: string };
 
@@ -32,8 +31,8 @@ export default function ResetPassword() {
 
     setFormError(null);
     const found: FieldErrors = {};
-    if (pass.length < PASSWORD_MIN)
-      found.pass = `Mínimo ${PASSWORD_MIN} caracteres`;
+    const passError = validatePassword(pass);
+    if (passError) found.pass = passError;
     if (confirm !== pass) found.confirm = 'Las contraseñas no coinciden';
     setErrors(found);
     if (Object.keys(found).length > 0) return;
@@ -82,7 +81,11 @@ export default function ResetPassword() {
               id="reset-pass"
               type="password"
               value={pass}
-              onChange={(e) => setPass(e.target.value)}
+              onChange={(e) => {
+                setPass(e.target.value);
+                if (errors.pass)
+                  setErrors((prev) => ({ ...prev, pass: undefined }));
+              }}
               placeholder="••••••••"
               autoComplete="new-password"
               aria-invalid={!!errors.pass}
