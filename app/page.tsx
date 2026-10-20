@@ -262,7 +262,7 @@ export default async function HomePage() {
       {/* ── WHY ── */}
       <section className="home-section reveal">
         <div className="section-head">
-          <div className="kicker pixel neon-magenta">// 01</div>
+          <div className="kicker pixel neon-magenta">{"// 01"}</div>
           <h2 className="section-title">¿POR QUÉ ARCADE VAULT?</h2>
           <div className="section-rule" />
         </div>
@@ -309,7 +309,7 @@ export default async function HomePage() {
       {/* ── GAMES PREVIEW ── */}
       <section className="home-section reveal">
         <div className="section-head">
-          <div className="kicker pixel neon-cyan">// 02</div>
+          <div className="kicker pixel neon-cyan">{"// 02"}</div>
           <h2 className="section-title">JUEGOS DISPONIBLES AHORA</h2>
           <div className="section-rule" />
         </div>
@@ -349,7 +349,7 @@ export default async function HomePage() {
       {/* ── ACTIVIDAD EN VIVO ── */}
       <section className="home-section reveal">
         <div className="section-head">
-          <div className="kicker pixel neon-yellow">// 03</div>
+          <div className="kicker pixel neon-yellow">{"// 03"}</div>
           <h2 className="section-title">ACTIVIDAD EN VIVO</h2>
           <div className="section-rule" />
         </div>
@@ -408,7 +408,7 @@ export default async function HomePage() {
       {/* ── PRICING ── */}
       <section className="home-section reveal">
         <div className="section-head">
-          <div className="kicker pixel neon-green">// 04</div>
+          <div className="kicker pixel neon-green">{"// 04"}</div>
           <h2 className="section-title">PRECIOS</h2>
           <div className="section-rule" />
         </div>
@@ -449,7 +449,7 @@ export default async function HomePage() {
               <div className="faq-q pixel">¿REALMENTE ES GRATIS?</div>
               <div className="faq-a">
                 Sí. Arcade Vault es un proyecto sin fines de lucro hecho por
-                amor a los clásicos. No hay versión "premium" escondida.
+                amor a los clásicos. No hay versión &quot;premium&quot; escondida.
               </div>
             </div>
             <div className="faq-item">

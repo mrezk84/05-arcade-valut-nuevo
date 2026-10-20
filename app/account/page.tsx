@@ -6,10 +6,10 @@ import { useUser } from '@/app/context/UserContext';
 import AvatarPicker from '@/components/AvatarPicker';
 import { isAvatarId, type AvatarId } from '@/lib/auth/avatars';
 import { translateAuthError } from '@/lib/auth/errors';
+import { validatePassword } from '@/lib/auth/password';
 import { USERNAME_MAX, normalizeUsername } from '@/lib/auth/username';
 import { createClient } from '@/lib/supabase/client';
 
-const PASSWORD_MIN = 8;
 const REDIRECT_DELAY = 1200; // ms, para que se vea el mensaje de éxito
 
 type Notice = { kind: 'ok' | 'error'; text: string } | null;
@@ -103,8 +103,8 @@ function AccountForms({
 
     setPassNotice(null);
     const found: { pass?: string; confirm?: string } = {};
-    if (pass.length < PASSWORD_MIN)
-      found.pass = `Mínimo ${PASSWORD_MIN} caracteres`;
+    const passError = validatePassword(pass);
+    if (passError) found.pass = passError;
     if (confirm !== pass) found.confirm = 'Las contraseñas no coinciden';
     setPassErrors(found);
     if (Object.keys(found).length > 0) return;
@@ -203,7 +203,11 @@ function AccountForms({
               id="account-pass"
               type="password"
               value={pass}
-              onChange={(e) => setPass(e.target.value)}
+              onChange={(e) => {
+                setPass(e.target.value);
+                if (passErrors.pass)
+                  setPassErrors((prev) => ({ ...prev, pass: undefined }));
+              }}
               placeholder="••••••••"
               autoComplete="new-password"
               aria-invalid={!!passErrors.pass}

@@ -30,6 +30,7 @@ export default function GamePlayer({
   }, [over, paused]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (score > 0 && score % 2500 < 100) setLevel((l) => l + 1);
   }, [score]);
 

@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
 import { useUser } from '@/app/context/UserContext';
 import { translateAuthError, translateAuthErrorCode } from '@/lib/auth/errors';
+import { validatePassword } from '@/lib/auth/password';
 import { USERNAME_MAX, normalizeUsername } from '@/lib/auth/username';
 import AvatarPicker from '@/components/AvatarPicker';
 import type { AvatarId } from '@/lib/auth/avatars';
@@ -12,7 +13,6 @@ import { createClient } from '@/lib/supabase/client';
 type Tab = 'in' | 'up';
 type FieldErrors = { username?: string; email?: string; pass?: string };
 
-const PASSWORD_MIN = 8;
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
 function AuthForm() {
@@ -67,8 +67,10 @@ function AuthForm() {
     else if (!EMAIL_RE.test(email.trim()))
       found.email = 'El correo no es válido';
     if (!pass) found.pass = 'Escribe tu contraseña';
-    else if (tab === 'up' && pass.length < PASSWORD_MIN)
-      found.pass = `Mínimo ${PASSWORD_MIN} caracteres`;
+    else if (tab === 'up') {
+      const passError = validatePassword(pass);
+      if (passError) found.pass = passError;
+    }
     return found;
   }
 
@@ -464,7 +466,11 @@ function AuthForm() {
               id="auth-pass"
               type="password"
               value={pass}
-              onChange={(e) => setPass(e.target.value)}
+              onChange={(e) => {
+                setPass(e.target.value);
+                if (errors.pass)
+                  setErrors((prev) => ({ ...prev, pass: undefined }));
+              }}
               placeholder="••••••••"
               autoComplete={tab === 'in' ? 'current-password' : 'new-password'}
               aria-invalid={!!errors.pass}

@@ -1,6 +1,14 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
+// Rutas que exigen sesión → destino sin sesión. Comparación por ruta exacta:
+// /auth y /auth/callback deben seguir siendo públicas. Es un chequeo de
+// navegación, no de autorización: los datos los protege RLS.
+const PROTECTED_ROUTES: Record<string, string> = {
+  '/account': '/auth',
+  '/auth/reset': '/auth?error=reset_no_session',
+};
+
 export const updateSession = async (request: NextRequest) => {
   let response = NextResponse.next({ request });
 
@@ -25,7 +33,15 @@ export const updateSession = async (request: NextRequest) => {
 
   // Valida el JWT (y refresca la sesión si hace falta). No usar getSession()
   // en el servidor: lee la cookie sin validarla.
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+
+  const redirectTo = PROTECTED_ROUTES[request.nextUrl.pathname];
+  if (redirectTo && !data?.claims) {
+    const redirect = NextResponse.redirect(new URL(redirectTo, request.url));
+    // Conserva las cookies que setAll haya refrescado o borrado.
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  }
 
   return response;
 };
