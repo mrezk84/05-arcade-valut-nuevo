@@ -40,6 +40,8 @@ Copy `.env.template` to `.env.local` and fill in:
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — Supabase client
 - `SUPABASE_DB_PASSWORD` — database password
 - `RESEND_API_KEY` — contact form
+- `SUPABASE_SERVICE_ROLE_KEY` — server-only key that bypasses RLS; used only by `lib/supabase/admin.ts` (contact rate limit, SPEC 15). Never `NEXT_PUBLIC_`.
+- `CONTACT_IP_SALT` — secret salt for hashing client IPs in `contact_attempts` (SPEC 15); generate with `openssl rand -hex 32`
 
 ## Skills
 

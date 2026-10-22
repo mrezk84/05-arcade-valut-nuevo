@@ -1,4 +1,9 @@
 import { Resend } from 'resend';
+import {
+  checkContactRateLimit,
+  retryAfterSeconds,
+  type RateLimitResult,
+} from '@/lib/contact/rate-limit';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -49,6 +54,31 @@ export async function POST(request: Request) {
 
   if (!EMAIL_RE.test(email.trim())) {
     return badRequest('El correo no es válido.');
+  }
+
+  // El intento cuenta aunque Resend falle después, para que reintentar en bucle no evite el límite.
+  let limit: RateLimitResult;
+  try {
+    limit = await checkContactRateLimit(request);
+  } catch (err) {
+    // Falla cerrada: si no se puede comprobar el límite, no se envía.
+    console.error('[contact] error al comprobar el límite', err);
+    return Response.json(
+      { error: 'El servicio no está disponible. Inténtalo más tarde.' },
+      { status: 503 },
+    );
+  }
+
+  if (limit !== 'ok') {
+    return Response.json(
+      {
+        error: 'Has enviado demasiados mensajes. Inténtalo de nuevo más tarde.',
+      },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(retryAfterSeconds(limit)) },
+      },
+    );
   }
 
   try {
