@@ -1,6 +1,6 @@
 # SPEC 15 — Anti-abuso del formulario de contacto
 
-> **Estado:** Aprobado · **Depende de:** SPEC 03 (contacto con Resend), SPEC 04 (integración de Supabase), SPEC 14 (seguridad básica) · **Fecha:** 2026-10-22
+> **Estado:** Implementado · **Depende de:** SPEC 03 (contacto con Resend), SPEC 04 (integración de Supabase), SPEC 14 (seguridad básica) · **Fecha:** 2026-10-22
 > **Objetivo:** Proteger `POST /api/contact` contra el spam y el gasto de la cuota de Resend con un límite de envíos por IP y un tope global diario guardados en Supabase, más un campo honeypot que los bots rellenan.
 
 ---
