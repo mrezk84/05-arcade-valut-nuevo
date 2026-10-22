@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from 'react';
 
-type FormState = { name: string; email: string; msg: string };
+type FormState = {
+  name: string;
+  email: string;
+  msg: string;
+  website: string; // honeypot: un usuario real nunca lo rellena
+};
+
+const EMPTY_FORM: FormState = { name: '', email: '', msg: '', website: '' };
 type Status = 'idle' | 'sending' | 'success' | 'error';
 
 const HeartSVG = (
@@ -130,7 +137,7 @@ function TerminalSuccess({
 }
 
 export default function AboutPage() {
-  const [form, setForm] = useState<FormState>({ name: '', email: '', msg: '' });
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [status, setStatus] = useState<Status>('idle');
   const [shake, setShake] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -180,7 +187,7 @@ export default function AboutPage() {
   }
 
   function reset() {
-    setForm({ name: '', email: '', msg: '' });
+    setForm(EMPTY_FORM);
     setStatus('idle');
     setErrorMsg('');
   }
@@ -289,6 +296,28 @@ export default function AboutPage() {
                   placeholder="Cuéntanos qué tienes en mente…"
                   value={form.msg}
                   onChange={(e) => setForm({ ...form, msg: e.target.value })}
+                />
+              </div>
+              {/* Honeypot: fuera de pantalla, sin foco y oculto a lectores de pantalla. */}
+              <div
+                aria-hidden="true"
+                style={{
+                  position: 'absolute',
+                  left: '-10000px',
+                  width: 1,
+                  height: 1,
+                  overflow: 'hidden',
+                }}
+              >
+                <input
+                  type="text"
+                  name="website"
+                  tabIndex={-1}
+                  autoComplete="off"
+                  value={form.website}
+                  onChange={(e) =>
+                    setForm({ ...form, website: e.target.value })
+                  }
                 />
               </div>
               {status === 'error' && (

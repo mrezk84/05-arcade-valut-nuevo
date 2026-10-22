@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     return badRequest('Solicitud no válida.');
   }
 
-  const { name, email, msg } = (body ?? {}) as Record<string, unknown>;
+  const { name, email, msg, website } = (body ?? {}) as Record<string, unknown>;
 
   if (
     typeof name !== 'string' ||
@@ -54,6 +54,12 @@ export async function POST(request: Request) {
 
   if (!EMAIL_RE.test(email.trim())) {
     return badRequest('El correo no es válido.');
+  }
+
+  // Honeypot: solo los bots rellenan `website`. Se responde ok para no darles pistas,
+  // sin enviar correo ni consumir el límite.
+  if (typeof website === 'string' && website.trim() !== '') {
+    return Response.json({ ok: true });
   }
 
   // El intento cuenta aunque Resend falle después, para que reintentar en bucle no evite el límite.
