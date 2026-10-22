@@ -11,5 +11,9 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "security-guidance@anthropic-plugin-directory": true,
+    "superpowers@anthropic-plugin-directory": true
   }
 }

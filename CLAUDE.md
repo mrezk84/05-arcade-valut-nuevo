@@ -40,6 +40,8 @@ Copy `.env.template` to `.env.local` and fill in:
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — Supabase client
 - `SUPABASE_DB_PASSWORD` — database password
 - `RESEND_API_KEY` — contact form
+- `SUPABASE_SERVICE_ROLE_KEY` — server-only key that bypasses RLS; used only by `lib/supabase/admin.ts` (contact rate limit, SPEC 15). Never `NEXT_PUBLIC_`.
+- `CONTACT_IP_SALT` — secret salt for hashing client IPs in `contact_attempts` (SPEC 15); generate with `openssl rand -hex 32`
 
 ## Skills
 
@@ -110,6 +112,17 @@ Real authentication with **Supabase Auth** (SPEC 13): email + password (email ve
 - The Nav shows avatar + name + "Cerrar sesión" with a session (hamburger menu below 1000 px, avatar only below 840 px).
 - The last name used when saving a score is stored in `av_player_name`.
 - Manual dashboard setup (Supabase → Auth): Email provider with "Confirm email", Google and GitHub providers, and `http://localhost:3000/auth/callback` plus the production URL as Redirect URLs. Default Supabase SMTP is rate-limited; custom SMTP (Resend) is a future spec.
+
+### Contact anti-abuse (SPEC 15)
+
+`POST /api/contact` (`app/api/contact/route.ts`) order: parse → validate → honeypot → rate limit → Resend. Invalid requests (`400`) and honeypot hits do not consume the limit; an attempt counts even if Resend fails afterwards.
+
+- **Limits:** 3 sends/hour per IP and 30/day globally (`CONTACT_LIMITS` in `lib/contact/rate-limit.ts`, adjustable without a migration). Over the limit → `429` with `Retry-After` (approximate: 3600 s / 86400 s). If Supabase fails → `503` (fails closed, nothing is sent).
+- **Storage:** table `contact_attempts` (RLS on, no policies, no grants for `anon`/`authenticated`) and function `contact_rate_limit_check` (`security definer`, advisory lock, `EXECUTE` only for `service_role`). The advisor reports `rls_enabled_no_policy` (INFO) on that table: expected.
+- **IP:** first value of `x-forwarded-for`, then `x-real-ip`, else bucket `unknown`. Only an HMAC-SHA256 hash (salt `CONTACT_IP_SALT`) is stored, never the IP. `x-forwarded-for` is only trustworthy behind a proxy that rewrites it (e.g. Vercel).
+- **`lib/supabase/admin.ts`** uses `SUPABASE_SERVICE_ROLE_KEY` (ignores RLS): import it only from Route Handlers, never from `'use client'` code.
+- **Honeypot:** hidden `website` input in `/about`; if filled, the route answers `{ ok: true }` without sending.
+- Sender is still `onboarding@resend.dev` (needs a verified domain to change).
 
 ### Games (`components/games/`)
 
