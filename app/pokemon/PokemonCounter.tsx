@@ -12,20 +12,14 @@ const pokemonId = (count: number) => ((count - 1) % TOTAL_POKEMON) + 1;
 
 export default function PokemonCounter() {
   const [count, setCount] = useState(0);
-  const [loaded, setLoaded] = useState(false);
+  const [loadedId, setLoadedId] = useState<number | null>(null);
 
   const id = count > 0 ? pokemonId(count) : null;
 
   // Precarga el siguiente para que el cambio sea inmediato.
   useEffect(() => {
-    const preload = new window.Image();
-    preload.src = spriteUrl(pokemonId(count + 1));
+    new window.Image().src = spriteUrl(pokemonId(count + 1));
   }, [count]);
-
-  function handleClick() {
-    setLoaded(false);
-    setCount((c) => c + 1);
-  }
 
   return (
     <section className={styles.wrap}>
@@ -35,21 +29,21 @@ export default function PokemonCounter() {
             Pulsa el botón para encontrar tu primer Pokémon.
           </p>
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={id}
-            className={`${styles.sprite} ${loaded ? styles.spriteIn : ''}`}
-            src={spriteUrl(id)}
-            alt={`Pokémon número ${id}`}
-            width={475}
-            height={475}
-            onLoad={() => setLoaded(true)}
-          />
-        )}
-        {id !== null && (
-          <span className={styles.dexNumber}>
-            N.º {String(id).padStart(4, '0')}
-          </span>
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              key={id}
+              className={`${styles.sprite} ${loadedId === id ? styles.spriteIn : ''}`}
+              src={spriteUrl(id)}
+              alt={`Pokémon número ${id}`}
+              width={475}
+              height={475}
+              onLoad={() => setLoadedId(id)}
+            />
+            <span className={styles.dexNumber}>
+              N.º {String(id).padStart(4, '0')}
+            </span>
+          </>
         )}
       </div>
 
@@ -57,7 +51,11 @@ export default function PokemonCounter() {
         {count}
       </p>
 
-      <button type="button" className={styles.button} onClick={handleClick}>
+      <button
+        type="button"
+        className={styles.button}
+        onClick={() => setCount((c) => c + 1)}
+      >
         Sumar uno
       </button>
     </section>
