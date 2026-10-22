@@ -1,0 +1,96 @@
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding: 48px 16px 64px;
+}
+
+.screen {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(100%, 380px);
+  aspect-ratio: 1;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  box-shadow:
+    0 0 0 4px var(--bg),
+    0 0 0 5px var(--line),
+    inset 0 0 60px rgba(0, 245, 255, 0.07);
+}
+
+.empty {
+  max-width: 24ch;
+  margin: 0;
+  text-align: center;
+  color: var(--ink-dim);
+  line-height: 1.7;
+}
+
+.sprite {
+  width: 86%;
+  height: 86%;
+  object-fit: contain;
+  opacity: 0;
+  transform: scale(0.88);
+  filter: drop-shadow(0 0 18px rgba(0, 245, 255, 0.25));
+}
+
+/* Solo se anima cuando el cambio responde al clic del usuario. */
+.spriteIn {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 0.18s ease-out,
+    transform 0.22s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.dexNumber {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.count {
+  margin: 0;
+  font-family: var(--pixel);
+  font-size: clamp(44px, 12vw, 72px);
+  line-height: 1;
+  color: var(--yellow);
+  text-shadow: 0 0 18px rgba(245, 255, 0, 0.35);
+  font-variant-numeric: tabular-nums;
+}
+
+.button {
+  padding: 16px 32px;
+  font-family: var(--pixel);
+  font-size: 12px;
+  color: var(--bg);
+  background: var(--cyan);
+  border: 0;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #00929a;
+  transition:
+    transform 0.08s,
+    box-shadow 0.08s;
+}
+
+.button:active {
+  transform: translateY(4px);
+  box-shadow: 0 0 0 #00929a;
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spriteIn,
+  .button {
+    transition: none;
+  }
+}
